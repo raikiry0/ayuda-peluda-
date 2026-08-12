@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Huellas — Agenda de mascotas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#132420;
+    --paper:#FFFBF2;
+    --paper-dim:#FBF3E3;
+    --pine:#1B3A34;
+    --pine-dark:#0F2620;
+    --pine-light:#2C5349;
+    --butter:#F2C14E;
+    --butter-dark:#D9A62E;
+    --coral:#FF6B5B;
+    --sage:#8FB89A;
+    --sky:#5B8FB9;
+    --whatsapp:#25D366;
+    --whatsapp-dark:#1DA851;
+    --line:rgba(19,36,32,0.14);
+    --line-soft:rgba(255,251,242,0.16);
+    --shadow: 0 8px 24px rgba(15,38,32,0.16);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--pine-dark);
+    background-image:
+      radial-gradient(circle at 20% 0%, rgba(255,251,242,0.05), transparent 40%),
+      radial-gradient(circle at 90% 80%, rgba(242,193,78,0.06), transparent 45%);
+    font-family:'Inter',sans-serif;
+    color:var(--ink);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  #shell{
+    max-width:480px;
+    margin:0 auto;
+    min-height:100vh;
+    background:var(--paper);
+    position:relative;
+    box-shadow: var(--shadow);
+    display:flex;
+    flex-direction:column;
+  }
+  ::selection{background:var(--butter);color:var(--ink);}
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    background:var(--pine);
+    color:var(--paper);
+    padding:18px 20px 16px;
+    position:sticky;
+    top:0;
+    z-index:20;
+    box-shadow:0 2px 0 rgba(0,0,0,0.06);
+  }
+  .topbar-row{display:flex;align-items:center;gap:12px;}
+  .brand{
+    font-family:'Fraunces',serif;
+    font-weight:700;
+    font-size:22px;
+    letter-spacing:0.3px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .brand .stamp{
+    width:30px;height:30px;border-radius:50%;
+    background:var(--butter);
+    display:flex;align-items:center;justify-content:center;
+    font-size:16px;
+    transform:rotate(-8deg);
+    box-shadow:0 2px 0 rgba(0,0,0,0.15) inset;
+  }
+  .tagline{font-size:12.5px;opacity:0.7;margin-top:2px;font-weight:500;}
+  .back-btn{
+    background:none;border:none;color:var(--paper);
+    font-size:22px;cursor:pointer;padding:2px 6px 2px 0;
+    line-height:1;
+  }
+  .topbar .pet-header{display:flex;align-items:center;gap:12px;}
+  .pet-avatar-sm{
+    width:42px;height:42px;border-radius:50%;
+    background:var(--butter);
+    display:flex;align-items:center;justify-content:center;
+    font-size:22px;flex-shrink:0;
+    border:2px solid rgba(255,251,242,0.5);
+  }
+  .pet-header h1{font-family:'Fraunces',serif;font-size:19px;margin:0;font-weight:600;}
+  .pet-header .sub{font-size:12px;opacity:0.7;margin-top:1px;}
+
+  /* ---------- Tabs ---------- */
+  .tabs{
+    display:flex;
+    background:var(--pine);
+    padding:0 12px;
+    overflow-x:auto;
+    scrollbar-width:none;
+    position:sticky;top:74px;z-index:19;
+    box-shadow:0 2px 0 rgba(0,0,0,0.06);
+  }
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab-btn{
+    background:none;border:none;color:rgba(255,251,242,0.55);
+    font-family:'Inter',sans-serif;font-weight:600;font-size:13px;
+    padding:12px 12px 10px;cursor:pointer;white-space:nowrap;
+    border-bottom:3px solid transparent;
+    transition:color .15s;
+  }
+  .tab-btn.active{color:var(--butter);border-bottom-color:var(--butter);}
+
+  /* ---------- Content ---------- */
+  #content{flex:1;padding:20px 20px 100px;}
+  .section-title{
+    font-family:'Fraunces',serif;font-size:21px;font-weight:600;
+    margin:0 0 4px;color:var(--pine-dark);
+  }
+  .section-hint{font-size:13px;color:rgba(19,36,32,0.55);margin:0 0 18px;}
+
+  /* ---------- Home ---------- */
+  .hero{
+    padding:8px 0 22px;
+    border-bottom:1px dashed var(--line);
+    margin-bottom:22px;
+  }
+  .hero h1{
+    font-family:'Fraunces',serif;font-size:28px;line-height:1.15;margin:0 0 8px;
+  }
+  .hero p{font-size:14px;color:rgba(19,36,32,0.65);margin:0;line-height:1.5;}
+
+  .pet-grid{display:flex;flex-direction:column;gap:12px;}
+  .pet-card{
+    display:flex;align-items:center;gap:14px;
+    background:var(--paper-dim);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:14px 16px;
+    cursor:pointer;
+    transition:transform .12s, box-shadow .12s;
+    position:relative;
+  }
+  .pet-card:active{transform:scale(0.98);}
+  .pet-card .avatar{
+    width:52px;height:52px;border-radius:50%;
+    background:var(--paper);
+    border:2px solid var(--pine);
+    display:flex;align-items:center;justify-content:center;
+    font-size:26px;flex-shrink:0;
+  }
+  .pet-card .info{flex:1;min-width:0;}
+  .pet-card .info .name{font-family:'Fraunces',serif;font-weight:600;font-size:17px;}
+  .pet-card .info .meta{font-size:12px;color:rgba(19,36,32,0.55);margin-top:2px;}
+  .pet-card .next-badge{
+    font-family:'Space Mono',monospace;font-size:10.5px;
+    background:var(--pine);color:var(--butter);
+    padding:4px 8px;border-radius:20px;white-space:nowrap;
+  }
+  .pet-card .next-badge.urgent{background:var(--coral);color:#fff;}
+
+  .add-pet-card{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    border:2px dashed var(--line);
+    border-radius:16px;
+    padding:16px;
+    color:var(--pine);
+    font-weight:600;font-size:14px;
+    cursor:pointer;background:none;
+    width:100%;
+    font-family:'Inter',sans-serif;
+  }
+  .add-pet-card:active{background:var(--paper-dim);}
+
+  .learn-link{
+    margin-top:22px;
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--pine-dark);color:var(--paper);
+    padding:16px 18px;border-radius:16px;cursor:pointer;
+  }
+  .learn-link .t{font-family:'Fraunces',serif;font-size:15.5px;font-weight:600;}
+  .learn-link .s{font-size:12px;opacity:0.65;margin-top:2px;}
+
+  /* ---------- Species grid ---------- */
+  .species-grid{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:12px;
+  }
+  .species-card{
+    background:var(--paper-dim);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:16px 8px;
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+    cursor:pointer;
+    font-family:'Inter',sans-serif;
+    transition:transform .12s;
+  }
+  .species-card:active{transform:scale(0.95);background:var(--butter);}
+  .species-card .emoji{font-size:30px;}
+  .species-card .label{font-size:12.5px;font-weight:600;color:var(--pine-dark);}
+
+  /* ---------- Forms ---------- */
+  .field{margin-bottom:16px;}
+  .field label{
+    display:block;font-size:12.5px;font-weight:700;text-transform:uppercase;
+    letter-spacing:0.5px;color:var(--pine);margin-bottom:6px;
+  }
+  .field input[type=text], .field input[type=number], .field input[type=date],
+  .field textarea, .field select{
+    width:100%;padding:12px 13px;border:1.5px solid var(--line);
+    border-radius:10px;font-family:'Inter',sans-serif;font-size:14.5px;
+    background:var(--paper);color:var(--ink);
+  }
+  .field textarea{resize:vertical;min-height:70px;}
+  .field input:focus, .field textarea:focus, .field select:focus{
+    outline:none;border-color:var(--pine);
+  }
+  .pill-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .pill{
+    padding:9px 14px;border-radius:20px;border:1.5px solid var(--line);
+    background:var(--paper);font-size:13px;font-weight:600;cursor:pointer;
+    color:var(--pine-dark);
+  }
+  .pill.selected{background:var(--pine);color:var(--paper);border-color:var(--pine);}
+  .emoji-pick{display:flex;gap:8px;flex-wrap:wrap;}
+  .emoji-pick button{
+    width:44px;height:44px;border-radius:50%;font-size:20px;
+    border:2px solid var(--line);background:var(--paper);cursor:pointer;
+  }
+  .emoji-pick button.selected{border-color:var(--pine);background:var(--butter);}
+  .btn-primary{
+    width:100%;padding:14px;border:none;border-radius:12px;
+    background:var(--pine);color:var(--paper);font-weight:700;font-size:14.5px;
+    cursor:pointer;font-family:'Inter',sans-serif;
+  }
+  .btn-primary:active{background:var(--pine-dark);}
+  .btn-secondary{
+    width:100%;padding:13px;border:1.5px solid var(--line);border-radius:12px;
+    background:none;color:var(--pine-dark);font-weight:600;font-size:14px;
+    cursor:pointer;margin-top:10px;font-family:'Inter',sans-serif;
+  }
+  .btn-danger{color:var(--coral);border-color:rgba(255,107,91,0.4);}
+  .checkbox-row{display:flex;align-items:center;gap:10px;font-size:14px;margin-top:4px;}
+
+  /* ---------- Stamp cards (meds/vaccines) ---------- */
+  .stamp-card{
+    position:relative;
+    background:var(--paper-dim);
+    border:1.5px dashed var(--line);
+    border-radius:14px;
+    padding:14px 16px;
+    margin-bottom:12px;
+  }
+  .stamp-card .row1{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .stamp-card .name{font-family:'Fraunces',serif;font-weight:600;font-size:16px;}
+  .stamp-card .detail{font-size:12.5px;color:rgba(19,36,32,0.6);margin-top:4px;line-height:1.5;}
+  .badge-circle{
+    font-family:'Space Mono',monospace;
+    min-width:54px;height:54px;border-radius:50%;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:var(--sage);color:var(--pine-dark);
+    font-size:10px;font-weight:700;line-height:1.1;
+    transform:rotate(6deg);flex-shrink:0;text-align:center;padding:2px;
+  }
+  .badge-circle.due{background:var(--butter);}
+  .badge-circle.overdue{background:var(--coral);color:#fff;}
+  .badge-circle .num{font-size:15px;}
+  .stamp-actions{display:flex;gap:8px;margin-top:10px;}
+  .mini-btn{
+    font-size:11.5px;font-weight:700;padding:7px 11px;border-radius:8px;
+    border:1.5px solid var(--pine);background:none;color:var(--pine);cursor:pointer;
+  }
+  .mini-btn.ghost{border-color:var(--line);color:rgba(19,36,32,0.5);}
+  .mini-btn:active{background:var(--pine);color:var(--paper);}
+
+  .empty-state{
+    text-align:center;padding:40px 20px;color:rgba(19,36,32,0.45);
+  }
+  .empty-state .e{font-size:34px;margin-bottom:10px;}
+  .empty-state p{font-size:13.5px;margin:0;}
+
+  /* ---------- Calendar ---------- */
+  .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .cal-nav button{background:none;border:none;font-size:20px;cursor:pointer;color:var(--pine);padding:4px 10px;}
+  .cal-nav .month-label{font-family:'Fraunces',serif;font-weight:600;font-size:17px;text-transform:capitalize;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:18px;}
+  .cal-dow{text-align:center;font-size:10px;font-weight:700;color:rgba(19,36,32,0.4);padding-bottom:4px;}
+  .cal-day{
+    aspect-ratio:1;border-radius:10px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;font-size:12.5px;cursor:pointer;
+    background:var(--paper-dim);color:var(--ink);position:relative;border:1.5px solid transparent;
+  }
+  .cal-day.empty{background:none;cursor:default;}
+  .cal-day.today{border-color:var(--pine);font-weight:700;}
+  .cal-day.selected{background:var(--pine);color:var(--paper);}
+  .cal-dots{display:flex;gap:2px;margin-top:3px;position:absolute;bottom:5px;}
+  .cal-dot{width:4.5px;height:4.5px;border-radius:50%;}
+  .day-events{border-top:1px dashed var(--line);padding-top:14px;}
+  .day-events h3{font-family:'Fraunces',serif;font-size:15px;margin:0 0 10px;text-transform:capitalize;}
+  .event-row{display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13.5px;}
+  .event-row:last-child{border-bottom:none;}
+  .event-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
+  /* ---------- Weight ---------- */
+  .weight-current{
+    background:var(--pine);color:var(--paper);border-radius:16px;padding:18px;margin-bottom:18px;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .weight-current .big{font-family:'Space Mono',monospace;font-size:30px;font-weight:700;}
+  .weight-current .delta{font-size:12.5px;opacity:0.75;margin-top:2px;}
+  .sparkline-wrap{margin-bottom:18px;}
+  .weight-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:13.5px;}
+  .weight-row .d{color:rgba(19,36,32,0.55);font-size:12px;}
+  .weight-row .v{font-family:'Space Mono',monospace;font-weight:700;}
+  .weight-row .delta-tag{font-size:11px;padding:2px 7px;border-radius:10px;margin-left:6px;}
+  .delta-up{background:rgba(255,107,91,0.15);color:var(--coral);}
+  .delta-down{background:rgba(143,184,154,0.3);color:var(--pine-dark);}
+
+  /* ---------- Notes ---------- */
+  .note-card{
+    background:var(--paper-dim);border-radius:14px;padding:14px 16px;margin-bottom:12px;
+    border-left:4px solid var(--butter);
+  }
+  .note-card p{margin:0 0 6px;font-size:14px;line-height:1.5;}
+  .note-card .meta{font-size:11.5px;color:rgba(19,36,32,0.5);}
+
+  /* ---------- Profile ---------- */
+  .profile-avatar{
+    width:88px;height:88px;border-radius:50%;background:var(--butter);
+    display:flex;align-items:center;justify-content:center;font-size:42px;
+    margin:0 auto 16px;border:3px solid var(--pine);
+  }
+  .profile-row{display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--line);font-size:14px;}
+  .profile-row .k{color:rgba(19,36,32,0.55);}
+  .profile-row .v{font-weight:600;}
+
+  /* ---------- FAB ---------- */
+  .fab{
+    position:fixed;bottom:24px;left:50%;
+    transform:translateX(calc(-50% + 200px));
+    width:56px;height:56px;border-radius:50%;background:var(--coral);color:#fff;
+    border:none;font-size:26px;box-shadow:0 6px 18px rgba(255,107,91,0.45);
+    cursor:pointer;z-index:25;display:flex;align-items:center;justify-content:center;
+  }
+  @media (max-width:480px){
+    .fab{transform:translateX(0);right:22px;left:auto;}
+  }
+
+  /* ---------- Modal ---------- */
+  .overlay{
+    position:fixed;inset:0;background:rgba(15,38,32,0.55);z-index:50;
+    display:flex;align-items:flex-end;justify-content:center;
+  }
+  .modal{
+    background:var(--paper);width:100%;max-width:480px;border-radius:22px 22px 0 0;
+    padding:22px 22px 28px;max-height:88vh;overflow-y:auto;
+    animation:slideUp .22s ease-out;
+  }
+  @keyframes slideUp{from{transform:translateY(30px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+  .modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;}
+  .modal-head h2{font-family:'Fraunces',serif;font-size:19px;margin:0;}
+  .modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:rgba(19,36,32,0.5);}
+
+  /* ---------- Wellness / learn ---------- */
+  .sign-card{background:var(--paper-dim);border-radius:14px;padding:14px 16px;margin-bottom:10px;}
+  .sign-card .t{font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;}
+  .sign-card .d{font-size:13px;color:rgba(19,36,32,0.6);margin-top:5px;line-height:1.5;}
+  .disclaimer{
+    background:var(--pine-dark);color:rgba(255,251,242,0.85);border-radius:14px;
+    padding:14px 16px;font-size:12.5px;line-height:1.5;margin-top:16px;
+  }
+
+  /* ---------- Print ---------- */
+  #print-area{display:none;}
+  @media print{
+    body *{visibility:hidden;}
+    #print-area, #print-area *{visibility:visible;}
+    #print-area{display:block;position:absolute;top:0;left:0;width:100%;padding:20px;}
+  }
+  .loading-screen{
+    display:flex;align-items:center;justify-content:center;height:100vh;
+    font-family:'Fraunces',serif;color:var(--pine);font-size:16px;
+  }
+
+  /* ---------- WhatsApp alarm toggle & fields ---------- */
+  .wa-toggle{
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--paper-dim);border-radius:12px;padding:12px 14px;
+    margin-bottom:14px;border:1.5px solid var(--line);
+  }
+  .wa-toggle .lbl{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;color:var(--pine-dark);}
+  .switch{position:relative;width:44px;height:25px;flex-shrink:0;}
+  .switch input{opacity:0;width:0;height:0;}
+  .switch .track{
+    position:absolute;inset:0;background:var(--line);border-radius:20px;cursor:pointer;transition:.15s;
+  }
+  .switch .track:before{
+    content:"";position:absolute;width:19px;height:19px;left:3px;top:3px;
+    background:#fff;border-radius:50%;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,0.25);
+  }
+  .switch input:checked + .track{background:var(--whatsapp);}
+  .switch input:checked + .track:before{transform:translateX(19px);}
+  .wa-fields{
+    background:rgba(37,211,102,0.08);border:1.5px solid rgba(37,211,102,0.35);
+    border-radius:14px;padding:14px;margin-bottom:16px;
+  }
+  .wa-fields .wa-title{font-size:12px;font-weight:700;color:var(--whatsapp-dark);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+  .wa-row{display:flex;gap:10px;}
+  .wa-row .field{flex:1;}
+  .wa-status{
+    display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;
+    padding:5px 10px;border-radius:20px;margin-top:8px;
+  }
+  .wa-status.scheduled{background:rgba(37,211,102,0.15);color:var(--whatsapp-dark);}
+  .wa-status.due{background:var(--whatsapp);color:#fff;}
+  .wa-send-btn{
+    display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;
+    padding:8px 13px;border-radius:9px;border:none;background:var(--whatsapp);color:#fff;
+    cursor:pointer;margin-top:8px;text-decoration:none;
+  }
+  .wa-send-btn:active{background:var(--whatsapp-dark);}
+
+  /* ---------- Home banner for due alarms ---------- */
+  .alarm-banner{
+    background:var(--whatsapp);color:#fff;border-radius:16px;padding:15px 16px;
+    margin-bottom:18px;
+  }
+  .alarm-banner .h{font-family:'Fraunces',serif;font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+  .alarm-item{
+    display:flex;justify-content:space-between;align-items:center;
+    background:rgba(255,255,255,0.15);border-radius:10px;padding:10px 12px;margin-bottom:8px;
+    font-size:12.5px;
+  }
+  .alarm-item:last-child{margin-bottom:0;}
+  .alarm-item .a-actions{display:flex;gap:6px;}
+  .alarm-item .a-btn{
+    background:#fff;color:var(--whatsapp-dark);border:none;border-radius:7px;
+    font-size:11px;font-weight:700;padding:6px 9px;cursor:pointer;text-decoration:none;display:inline-block;
+  }
+  .alarm-item .a-btn.ghost{background:rgba(255,255,255,0.25);color:#fff;}
+
+  /* ---------- Allergies box ---------- */
+  .allergy-box{
+    background:rgba(255,107,91,0.08);border:1.5px solid rgba(255,107,91,0.3);
+    border-radius:14px;padding:14px 16px;margin:16px 0;
+  }
+  .allergy-box .t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--coral);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+  .allergy-box textarea{
+    width:100%;border:1.5px solid rgba(255,107,91,0.3);border-radius:10px;padding:10px 12px;
+    font-family:'Inter',sans-serif;font-size:13.5px;min-height:56px;background:#fff;color:var(--ink);
+  }
+  .allergy-warn{font-size:12px;margin-top:2px;}
+</style>
+</head>
+<body>
+<div id="shell">
+  <div id="topbar-container"></div>
+  <div id="content"><div class="loading-screen">🐾 Cargando…</div></div>
+  <div id="fab-container"></div>
+</div>
+<div id="modal-container"></div>
+<div id="print-area"></div>
+
+<script>
+/* ============================= DATA / STATE ============================= */
+const SPECIES = [
+  {id:'perro', label:'Perro', emojis:['🐶','🐕','🦮','🐩']},
+  {id:'gato', label:'Gato', emojis:['🐱','🐈','🐈‍⬛']},
+  {id:'ave', label:'Ave', emojis:['🐦','🦜','🐤','🦢']},
+  {id:'conejo', label:'Conejo', emojis:['🐰','🐇']},
+  {id:'pez', label:'Pez', emojis:['🐠','🐟','🐡']},
+  {id:'reptil', label:'Reptil', emojis:['🦎','🐢','🐍']},
+  {id:'roedor', label:'Roedor', emojis:['🐹','🐭','🐿️']},
+  {id:'caballo', label:'Caballo', emojis:['🐴','🐎']},
+  {id:'otro', label:'Otro', emojis:['🐾','🐾']},
+];
+const speciesInfo = id => SPECIES.find(s=>s.id===id) || SPECIES[SPECIES.length-1];
+
+const WELLNESS_SIGNS = [
+  {t:'Pérdida de apetito', e:'🍽️', d:'Si tu mascota rechaza la comida por más de un día, o come mucho menos de lo habitual, puede ser señal de dolor, problemas dentales o digestivos.'},
+  {t:'Cambios en la energía', e:'😴', d:'Decaimiento, esconderse más de lo normal o rechazar el juego suelen aparecer antes que otros síntomas visibles.'},
+  {t:'Respiración agitada', e:'💨', d:'Respirar con la boca abierta, más rápido de lo normal o con esfuerzo (sin haber hecho ejercicio) merece atención inmediata.'},
+  {t:'Cambios en el pelo o piel', e:'🪮', d:'Caída excesiva, zonas sin pelo, picazón intensa o lamido repetido en una misma zona pueden indicar alergias, parásitos o dolor localizado.'},
+  {t:'Vómitos o diarrea persistentes', e:'🤢', d:'Un episodio aislado puede ser normal, pero si se repite en 24 horas o hay sangre, es momento de consultar.'},
+  {t:'Cambios en la orina o heces', e:'💧', d:'Dificultad para orinar, sangre, o cambios bruscos en frecuencia y color son señales que no conviene postergar.'},
+  {t:'Bultos o hinchazón', e:'🔍', d:'Cualquier bulto nuevo, que crece o cambia de forma vale la pena que lo revise un profesional.'},
+  {t:'Cambios de comportamiento', e:'🧭', d:'Agresividad repentina, desorientación o aislamiento pueden tener una causa física detrás, no solo de carácter.'},
+];
+
+let STATE = {
+  pets: [],          // [{id,name,species,emoji,breed,sex,neutered,birthMode,birthDate,estYears,estMonths,createdAt}]
+  petData: {},        // {petId: {meds:[],vaccines:[],weights:[],notes:[]}}
+  view: 'home',        // home | addSpecies | addPetForm | dashboard | learn | print
+  activePetId: null,
+  tab: 'calendario',
+  calMonth: new Date().getMonth(),
+  calYear: new Date().getFullYear(),
+  selectedDay: null,
+  pendingSpecies: null,
+  modal: null,        // {type:'med'|'vaccine'|'weight'|'note', editId?}
+  loading: true,
+};
+
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const todayISO = () => new Date().toISOString().slice(0,10);
+const fmtDate = iso => { if(!iso) return '—'; const d=new Date(iso+'T00:00:00'); return d.toLocaleDateString('es-AR',{day:'2-digit',month:'short',year:'numeric'}); };
+const daysBetween = (a,b) => Math.round((new Date(b+'T00:00:00') - new Date(a+'T00:00:00'))/86400000);
+
+/* ============================= STORAGE ============================= */
+async function loadAll(){
+  try{
+    const p = await window.storage.get('pets', false);
+    STATE.pets = p ? JSON.parse(p.value) : [];
+  }catch(e){ STATE.pets = []; }
+  for(const pet of STATE.pets){
+    if(pet.allergies===undefined) pet.allergies='';
+    try{
+      const d = await window.storage.get('pet-data:'+pet.id, false);
+      STATE.petData[pet.id] = d ? JSON.parse(d.value) : {meds:[],vaccines:[],weights:[],notes:[],consultas:[]};
+    }catch(e){
+      STATE.petData[pet.id] = {meds:[],vaccines:[],weights:[],notes:[],consultas:[]};
+    }
+    const pd = STATE.petData[pet.id];
+    if(!pd.consultas) pd.consultas=[];
+    if(!pd.meds) pd.meds=[];
+    if(!pd.vaccines) pd.vaccines=[];
+    if(!pd.weights) pd.weights=[];
+    if(!pd.notes) pd.notes=[];
+  }
+  STATE.loading = false;
+  render();
+}
+async function savePets(){
+  try{ await window.storage.set('pets', JSON.stringify(STATE.pets), false); }
+  catch(e){ console.error('Error guardando mascotas', e); }
+}
+async function savePetData(petId){
+  try{ await window.storage.set('pet-data:'+petId, JSON.stringify(STATE.petData[petId]), false); }
+  catch(e){ console.error('Error guardando datos de mascota', e); }
+}
+
+/* ============================= DERIVED HELPERS ============================= */
+function petAge(pet){
+  let birthISO = pet.birthDate;
+  if(pet.birthMode === 'estimate'){
+    const now = new Date();
+    const y = (pet.estYears||0), m = (pet.estMonths||0);
+    const approx = new Date(now.getFullYear()-y, now.getMonth()-m, now.getDate());
+    birthISO = approx.toISOString().slice(0,10);
+  }
+  if(!birthISO) return 'Edad desconocida';
+  const now = new Date(); const b = new Date(birthISO+'T00:00:00');
+  let years = now.getFullYear()-b.getFullYear();
+  let months = now.getMonth()-b.getMonth();
+  if(now.getDate()<b.getDate()) months--;
+  if(months<0){years--;months+=12;}
+  if(years<=0 && months<=0) return 'Recién nacido/a';
+  let parts=[];
+  if(years>0) parts.push(years+(years===1?' año':' años'));
+  if(months>0) parts.push(months+(months===1?' mes':' meses'));
+  return (pet.birthMode==='estimate'?'~ ':'')+parts.join(' y ');
+}
+
+function nextMedDue(med){
+  // returns ISO date of next due occurrence not yet marked done, or null if finished
+  if(med.type==='single'){
+    return med.done ? null : med.startDate;
+  }
+  let d = med.startDate;
+  const done = new Set(med.doneDates||[]);
+  let guard=0;
+  while(guard<2000){
+    if(med.endDate && d > med.endDate) return null;
+    if(!done.has(d)) return d;
+    const nd = new Date(d+'T00:00:00'); nd.setDate(nd.getDate()+(med.freqDays||1));
+    d = nd.toISOString().slice(0,10);
+    guard++;
+  }
+  return null;
+}
+
+function petUpcomingSummary(pet){
+  const data = STATE.petData[pet.id] || {meds:[],vaccines:[],notes:[]};
+  const dates = [];
+  (data.meds||[]).forEach(m=>{ const n=nextMedDue(m); if(n) dates.push(n); });
+  (data.vaccines||[]).forEach(v=>{ if(v.nextDue) dates.push(v.nextDue); });
+  (data.notes||[]).forEach(n=>{ if(n.reminderDate) dates.push(n.reminderDate); });
+  if(dates.length===0) return null;
+  dates.sort();
+  return dates[0];
+}
+
+function dayLabel(diff){
+  if(diff===0) return 'Hoy';
+  if(diff===1) return 'Mañana';
+  if(diff<0) return Math.abs(diff)+'d atrasado';
+  return 'en '+diff+'d';
+}
+
+/* ---------- WhatsApp alarm helpers ---------- */
+const REPEAT_LABELS = {none:'No repetir', daily:'Diario', weekly:'Semanal', monthly:'Mensual'};
+function combineDateTime(date,time){
+  if(!date) return null;
+  return new Date(date+'T'+(time||'09:00')+':00');
+}
+function isAlarmDue(wa){
+  if(!wa || !wa.enabled || !wa.date) return false;
+  const dt = combineDateTime(wa.date, wa.time);
+  if(!dt) return false;
+  if(wa.repeat!=='none' ) return dt <= new Date();
+  return dt <= new Date() && !wa.sent;
+}
+function waMessageFor(pet, kind, entry){
+  if(kind==='med') return `Recordatorio 🐾: dale a ${pet.name} su medicación "${entry.name}"${entry.dose?' ('+entry.dose+')':''}.`;
+  return `Recordatorio 🐾: ${pet.name} tiene consulta veterinaria${entry.motivo?' por "'+entry.motivo+'"':''} el ${fmtDate(entry.fecha)}${entry.hora?' a las '+entry.hora:''}.`;
+}
+function waLink(phone, message){
+  const text = encodeURIComponent(message);
+  const clean = (phone||'').replace(/[^0-9]/g,'');
+  return clean ? `https://wa.me/${clean}?text=${text}` : `https://api.whatsapp.com/send?text=${text}`;
+}
+function advanceAlarm(wa){
+  if(!wa.date) return;
+  const d = new Date(wa.date+'T00:00:00');
+  if(wa.repeat==='daily') d.setDate(d.getDate()+1);
+  else if(wa.repeat==='weekly') d.setDate(d.getDate()+7);
+  else if(wa.repeat==='monthly') d.setMonth(d.getMonth()+1);
+  else { wa.sent = true; return; }
+  wa.date = d.toISOString().slice(0,10);
+  wa.sent = false;
+}
+function collectDueAlarms(){
+  const out = [];
+  STATE.pets.forEach(pet=>{
+    const data = STATE.petData[pet.id]||{};
+    (data.meds||[]).forEach(m=>{ if(isAlarmDue(m.whatsapp)) out.push({pet,entry:m,kind:'med',coll:'meds'}); });
+    (data.consultas||[]).forEach(c=>{ if(isAlarmDue(c.whatsapp)) out.push({pet,entry:c,kind:'consulta',coll:'consultas'}); });
+  });
+  return out;
+}
+async function markAlarmSent(petId, coll, entryId){
+  const entry = STATE.petData[petId][coll].find(x=>x.id===entryId);
+  if(entry && entry.whatsapp) advanceAlarm(entry.whatsapp);
+  await savePetData(petId); render();
+}
+function waFieldsHtml(d){
+  d.whatsapp = d.whatsapp || {enabled:false, phone:'', date:'', time:'09:00', repeat:'none', sent:false};
+  const wa = d.whatsapp;
+  return `
+    <div class="wa-toggle">
+      <div class="lbl">💬 Avisar por WhatsApp</div>
+      <label class="switch">
+        <input type="checkbox" ${wa.enabled?'checked':''} onchange="toggleWaField(this.checked)">
+        <span class="track"></span>
+      </label>
+    </div>
+    ${wa.enabled ? `
+      <div class="wa-fields">
+        <div class="wa-title">💬 Datos del aviso</div>
+        <div class="field"><label>Número (opcional)</label><input type="text" placeholder="Ej: 549291XXXXXXX" value="${escapeHtml(wa.phone||'')}" oninput="STATE.modal.draft.whatsapp.phone=this.value"></div>
+        <div class="wa-row">
+          <div class="field"><label>Fecha del aviso</label><input type="date" value="${wa.date||''}" oninput="STATE.modal.draft.whatsapp.date=this.value"></div>
+          <div class="field"><label>Hora</label><input type="time" value="${wa.time||'09:00'}" oninput="STATE.modal.draft.whatsapp.time=this.value"></div>
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label>Repetir aviso</label>
+          <div class="pill-row">
+            ${Object.entries(REPEAT_LABELS).map(([k,l])=>`<button class="pill ${wa.repeat===k?'selected':''}" onclick="STATE.modal.draft.whatsapp.repeat='${k}';render()">${l}</button>`).join('')}
+          </div>
+        </div>
+      </div>
+    ` : ''}
+  `;
+}
+function toggleWaField(checked){
+  STATE.modal.draft.whatsapp = STATE.modal.draft.whatsapp || {enabled:false, phone:'', date:'', time:'09:00', repeat:'none', sent:false};
+  STATE.modal.draft.whatsapp.enabled = checked;
+  if(checked && !STATE.modal.draft.whatsapp.date) STATE.modal.draft.whatsapp.date = todayISO();
+  render();
+}
+function waEntryStatusHtml(pet, entry, kind){
+  const wa = entry.whatsapp;
+  if(!wa || !wa.enabled) return '';
+  const due = isAlarmDue(wa);
+  const link = waLink(wa.phone, waMessageFor(pet, kind, entry));
+  return `
+    <div class="wa-status ${due?'due':'scheduled'}">💬 ${due?'Aviso listo para enviar':'Programado '+fmtDate(wa.date)+' '+(wa.time||'')} ${wa.repeat!=='none'?' · '+REPEAT_LABELS[wa.repeat]:''}</div>
+    <div>
+      <a class="wa-send-btn" href="${link}" target="_blank" rel="noopener" onclick="markAlarmSent('${pet.id}','${kind==='med'?'meds':'consultas'}','${entry.id}')">📲 Enviar por WhatsApp</a>
+    </div>
+  `;
+}
+
+/* ============================= RENDER ROOT ============================= */
+function render(){
+  if(STATE.loading){
+    document.getElementById('content').innerHTML = '<div class="loading-screen">🐾 Cargando…</div>';
+    document.getElementById('topbar-container').innerHTML = '';
+    document.getElementById('fab-container').innerHTML = '';
+    return;
+  }
+  renderTopbar();
+  renderContent();
+  renderFab();
+  renderModal();
+}
+
+function renderTopbar(){
+  const el = document.getElementById('topbar-container');
+  if(STATE.view==='home'){
+    el.innerHTML = `
+      <div class="topbar">
+        <div class="brand"><span class="stamp">🐾</span> Huellas</div>
+        <div class="tagline">La libreta de campo de tu mascota</div>
+      </div>`;
+    return;
+  }
+  if(STATE.view==='addSpecies' || STATE.view==='addPetForm'){
+    el.innerHTML = `
+      <div class="topbar">
+        <div class="topbar-row">
+          <button class="back-btn" onclick="goHome()">←</button>
+          <div class="brand" style="font-size:18px;">${STATE.view==='addSpecies'?'Nueva mascota':'Sus datos'}</div>
+        </div>
+      </div>`;
+    return;
+  }
+  if(STATE.view==='learn'){
+    el.innerHTML = `
+      <div class="topbar">
+        <div class="topbar-row">
+          <button class="back-btn" onclick="goHome()">←</button>
+          <div class="brand" style="font-size:18px;">Señales de alerta</div>
+        </div>
+      </div>`;
+    return;
+  }
+  if(STATE.view==='dashboard'){
+    const pet = STATE.pets.find(p=>p.id===STATE.activePetId);
+    if(!pet){ el.innerHTML=''; return; }
+    const tabs = [
+      ['calendario','Calendario'],['medicacion','Medicación'],['vacunas','Vacunas'],
+      ['consultas','Consultas'],['peso','Peso'],['notas','Notas'],['perfil','Perfil']
+    ];
+    el.innerHTML = `
+      <div class="topbar">
+        <div class="topbar-row pet-header">
+          <button class="back-btn" onclick="goHome()">←</button>
+          <div class="pet-avatar-sm">${pet.emoji}</div>
+          <div>
+            <h1>${escapeHtml(pet.name)}</h1>
+            <div class="sub">${speciesInfo(pet.species).label} · ${petAge(pet)}</div>
+          </div>
+        </div>
+      </div>
+      <div class="tabs">
+        ${tabs.map(([id,label])=>`<button class="tab-btn ${STATE.tab===id?'active':''}" onclick="setTab('${id}')">${label}</button>`).join('')}
+      </div>`;
+  }
+}
+
+function renderContent(){
+  const el = document.getElementById('content');
+  if(STATE.view==='home') return el.innerHTML = viewHome();
+  if(STATE.view==='addSpecies') return el.innerHTML = viewAddSpecies();
+  if(STATE.view==='addPetForm') return el.innerHTML = viewAddPetForm();
+  if(STATE.view==='learn') return el.innerHTML = viewLearn();
+  if(STATE.view==='dashboard') return el.innerHTML = viewDashboard();
+  if(STATE.view==='print') return el.innerHTML = '';
+}
+
+function renderFab(){
+  const el = document.getElementById('fab-container');
+  if(STATE.view!=='dashboard'){ el.innerHTML=''; return; }
+  const map = {medicacion:{icon:'+',type:'med',title:'Agregar medicación'},
+    vacunas:{icon:'+',type:'vaccine',title:'Agregar vacuna'},
+    consultas:{icon:'+',type:'consulta',title:'Agregar consulta'},
+    peso:{icon:'+',type:'weight',title:'Registrar peso'},
+    notas:{icon:'+',type:'note',title:'Agregar nota'}};
+  const cfg = map[STATE.tab];
+  if(!cfg){ el.innerHTML=''; return; }
+  el.innerHTML = `<button class="fab" title="${cfg.title}" onclick="openModal('${cfg.type}')">+</button>`;
+}
+
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ============================= HOME VIEW ============================= */
+function viewHome(){
+  if(STATE.pets.length===0){
+    return `
+      <div class="hero">
+        <h1>Todo sobre tu animal,<br>en un solo lugar.</h1>
+        <p>Medicación, vacunas, peso y notas — para perros, gatos y cualquier compañero que tengas en casa.</p>
+      </div>
+      <div class="section-title">¿Qué animal tenés?</div>
+      <div class="section-hint">Elegí una especie para crear su ficha.</div>
+      ${speciesGridHtml()}
+      <div class="learn-link" onclick="goLearn()">
+        <div><div class="t">Señales de alerta</div><div class="s">Aprendé a notar cuándo vale la pena ir al veterinario</div></div>
+        <div style="font-size:20px;">→</div>
+      </div>
+    `;
+  }
+  return `
+    ${alarmBannerHtml()}
+    <div class="section-title">Tus mascotas</div>
+    <div class="section-hint">Tocá una ficha para ver su agenda.</div>
+    <div class="pet-grid">
+      ${STATE.pets.map(petCardHtml).join('')}
+      <button class="add-pet-card" onclick="goAddSpecies()">＋ Agregar otra mascota</button>
+    </div>
+    <div class="learn-link" onclick="goLearn()">
+      <div><div class="t">Señales de alerta</div><div class="s">Signos que conviene no ignorar</div></div>
+      <div style="font-size:20px;">→</div>
+    </div>
+  `;
+}
+
+function alarmBannerHtml(){
+  const due = collectDueAlarms();
+  if(due.length===0) return '';
+  return `
+    <div class="alarm-banner">
+      <div class="h">💬 ${due.length} aviso${due.length===1?'':'s'} de WhatsApp para enviar</div>
+      ${due.map(({pet,entry,kind,coll})=>`
+        <div class="alarm-item">
+          <div>${pet.emoji} <strong>${escapeHtml(pet.name)}</strong> — ${kind==='med'?escapeHtml(entry.name):escapeHtml(entry.motivo||'Consulta')}</div>
+          <div class="a-actions">
+            <a class="a-btn" href="${waLink(entry.whatsapp.phone, waMessageFor(pet, kind, entry))}" target="_blank" rel="noopener" onclick="markAlarmSent('${pet.id}','${coll}','${entry.id}')">Enviar</a>
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function petCardHtml(pet){
+  const next = petUpcomingSummary(pet);
+  let badge = '';
+  if(next){
+    const diff = daysBetween(todayISO(), next);
+    const urgent = diff<=1;
+    badge = `<div class="next-badge ${urgent?'urgent':''}">${dayLabel(diff)}</div>`;
+  }
+  return `
+    <div class="pet-card" onclick="openPet('${pet.id}')">
+      <div class="avatar">${pet.emoji}</div>
+      <div class="info">
+        <div class="name">${escapeHtml(pet.name)}</div>
+        <div class="meta">${speciesInfo(pet.species).label}${pet.breed?' · '+escapeHtml(pet.breed):''}${pet.allergies?' · ⚠️ alergias':''}</div>
+      </div>
+      ${badge}
+    </div>`;
+}
+
+function speciesGridHtml(){
+  return `<div class="species-grid">
+    ${SPECIES.map(s=>`
+      <div class="species-card" onclick="pickSpecies('${s.id}')">
+        <div class="emoji">${s.emojis[0]}</div>
+        <div class="label">${s.label}</div>
+      </div>`).join('')}
+  </div>`;
+}
+
+function goHome(){ STATE.view='home'; STATE.activePetId=null; render(); }
+function goAddSpecies(){ STATE.view='addSpecies'; render(); }
+function goLearn(){ STATE.view='learn'; render(); }
+function pickSpecies(id){ STATE.pendingSpecies=id; STATE.view='addPetForm'; STATE._newPet = {emoji: speciesInfo(id).emojis[0], sex:null, neutered:null, birthMode:'exact'}; render(); }
+function openPet(id){ STATE.activePetId=id; STATE.tab='calendario'; STATE.selectedDay=todayISO(); STATE.calMonth=new Date().getMonth(); STATE.calYear=new Date().getFullYear(); STATE.view='dashboard'; render(); }
+function setTab(t){ STATE.tab=t; render(); }
+
+/* ============================= ADD SPECIES VIEW ============================= */
+function viewAddSpecies(){
+  return `
+    <div class="section-title">¿Qué animal tenés?</div>
+    <div class="section-hint">Elegí la especie para empezar su ficha.</div>
+    ${speciesGridHtml()}
+  `;
+}
+
+/* ============================= ADD PET FORM ============================= */
+function viewAddPetForm(){
+  const sp = speciesInfo(STATE.pendingSpecies);
+  const np = STATE._newPet;
+  return `
+    <div class="section-title">Ficha de ${sp.label.toLowerCase()}</div>
+    <div class="section-hint">Completá lo que sepas — podés editarlo después.</div>
+
+    <div class="field">
+      <label>Avatar</label>
+      <div class="emoji-pick">
+        ${sp.emojis.map(e=>`<button class="${np.emoji===e?'selected':''}" onclick="setNewPetField('emoji','${e}')">${e}</button>`).join('')}
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Nombre</label>
+      <input type="text" id="np-name" placeholder="Ej: Luna" value="${escapeHtml(np.name||'')}" oninput="setNewPetField('name', this.value)">
+    </div>
+
+    <div class="field">
+      <label>Raza (opcional)</label>
+      <input type="text" id="np-breed" placeholder="Ej: Mestizo, Siamés…" value="${escapeHtml(np.breed||'')}" oninput="setNewPetField('breed', this.value)">
+    </div>
+
+    <div class="field">
+      <label>Sexo</label>
+      <div class="pill-row">
+        <button class="pill ${np.sex==='macho'?'selected':''}" onclick="setNewPetField('sex','macho')">Macho</button>
+        <button class="pill ${np.sex==='hembra'?'selected':''}" onclick="setNewPetField('sex','hembra')">Hembra</button>
+        <button class="pill ${np.sex==='nose'?'selected':''}" onclick="setNewPetField('sex','nose')">No sé</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Esterilizado/a</label>
+      <div class="pill-row">
+        <button class="pill ${np.neutered==='si'?'selected':''}" onclick="setNewPetField('neutered','si')">Sí</button>
+        <button class="pill ${np.neutered==='no'?'selected':''}" onclick="setNewPetField('neutered','no')">No</button>
+        <button class="pill ${np.neutered==='nose'?'selected':''}" onclick="setNewPetField('neutered','nose')">No sé</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Fecha de nacimiento</label>
+      <div class="pill-row" style="margin-bottom:10px;">
+        <button class="pill ${np.birthMode==='exact'?'selected':''}" onclick="setNewPetField('birthMode','exact')">Fecha exacta</button>
+        <button class="pill ${np.birthMode==='estimate'?'selected':''}" onclick="setNewPetField('birthMode','estimate')">Edad aproximada</button>
+      </div>
+      ${np.birthMode==='estimate' ? `
+        <div style="display:flex;gap:10px;">
+          <input type="number" min="0" placeholder="Años" style="width:50%;padding:12px;border:1.5px solid var(--line);border-radius:10px;" value="${np.estYears||''}" oninput="setNewPetField('estYears', this.value)">
+          <input type="number" min="0" max="11" placeholder="Meses" style="width:50%;padding:12px;border:1.5px solid var(--line);border-radius:10px;" value="${np.estMonths||''}" oninput="setNewPetField('estMonths', this.value)">
+        </div>
+      ` : `
+        <input type="date" value="${np.birthDate||''}" max="${todayISO()}" oninput="setNewPetField('birthDate', this.value)">
+      `}
+    </div>
+
+    <button class="btn-primary" onclick="saveNewPet()">Guardar ficha</button>
+    <button class="btn-secondary" onclick="goAddSpecies()">← Cambiar especie</button>
+  `;
+}
+
+function setNewPetField(k,v){
+  if(k==='estYears'||k==='estMonths') v = v===''? '' : parseInt(v,10);
+  STATE._newPet[k]=v;
+  render();
+  if(k==='name'){ const i=document.getElementById('np-name'); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length);} }
+  if(k==='breed'){ const i=document.getElementById('np-breed'); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length);} }
+}
+
+async function saveNewPet(){
+  const np = STATE._newPet;
+  if(!np.name || !np.name.trim()){ alert('Poné un nombre para continuar.'); return; }
+  const pet = {
+    id: uid(), name: np.name.trim(), species: STATE.pendingSpecies, emoji: np.emoji,
+    breed: np.breed||'', sex: np.sex||'nose', neutered: np.neutered||'nose',
+    birthMode: np.birthMode||'exact', birthDate: np.birthDate||'',
+    estYears: np.estYears||0, estMonths: np.estMonths||0, createdAt: todayISO(),
+    allergies: ''
+  };
+  STATE.pets.push(pet);
+  STATE.petData[pet.id] = {meds:[],vaccines:[],weights:[],notes:[],consultas:[]};
+  await savePets();
+  await savePetData(pet.id);
+  STATE._newPet=null;
+  openPet(pet.id);
+}
+
+/* ============================= LEARN VIEW ============================= */
+function viewLearn(){
+  return `
+    <div class="section-title">Señales que vale la pena mirar</div>
+    <div class="section-hint">No reemplaza a tu veterinario — te ayuda a notar a tiempo cuándo conviene consultar.</div>
+    ${WELLNESS_SIGNS.map(s=>`
+      <div class="sign-card">
+        <div class="t"><span>${s.e}</span> ${s.t}</div>
+        <div class="d">${s.d}</div>
+      </div>`).join('')}
+    <div class="disclaimer">Esta guía es orientativa y aplica de forma general a la mayoría de los animales de compañía. Ante cualquier duda o síntoma persistente, consultá a un veterinario.</div>
+  `;
+}
+
+/* ============================= DASHBOARD ============================= */
+function viewDashboard(){
+  const pet = STATE.pets.find(p=>p.id===STATE.activePetId);
+  if(!pet) return '';
+  if(STATE.tab==='calendario') return tabCalendario(pet);
+  if(STATE.tab==='medicacion') return tabMedicacion(pet);
+  if(STATE.tab==='vacunas') return tabVacunas(pet);
+  if(STATE.tab==='consultas') return tabConsultas(pet);
+  if(STATE.tab==='peso') return tabPeso(pet);
+  if(STATE.tab==='notas') return tabNotas(pet);
+  if(STATE.tab==='perfil') return tabPerfil(pet);
+  return '';
+}
+
+/* ---- Calendar tab ---- */
+function buildEventsForPet(pet){
+  const data = STATE.petData[pet.id];
+  const events = {}; // date -> [{color,label}]
+  const push = (date,color,label) => { if(!date) return; (events[date]=events[date]||[]).push({color,label}); };
+  (data.meds||[]).forEach(m=>{
+    const n = nextMedDue(m);
+    if(n) push(n, 'var(--coral)', 'Medicación: '+m.name);
+    (m.doneDates||[]).forEach(dd=>push(dd,'var(--sage)','Medicación aplicada: '+m.name));
+  });
+  (data.vaccines||[]).forEach(v=>{
+    push(v.dateApplied, 'var(--sage)', 'Vacuna aplicada: '+v.name);
+    if(v.nextDue) push(v.nextDue,'var(--butter-dark)','Vacuna: '+v.name);
+  });
+  (data.weights||[]).forEach(w=> push(w.date,'var(--pine-light)','Peso registrado: '+w.value+w.unit));
+  (data.notes||[]).forEach(n=>{ if(n.reminderDate) push(n.reminderDate,'var(--coral)','Nota: '+n.text.slice(0,30)); });
+  (data.consultas||[]).forEach(c=>{ push(c.fecha,'var(--sky)','Consulta: '+(c.motivo||'veterinaria')+(c.hora?' '+c.hora:'')); });
+  return events;
+}
+
+function tabCalendario(pet){
+  const events = buildEventsForPet(pet);
+  const y = STATE.calYear, m = STATE.calMonth;
+  const first = new Date(y,m,1);
+  const startDow = first.getDay();
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  const monthLabel = first.toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+  const dows = ['D','L','M','M','J','V','S'];
+  let cells = '';
+  for(let i=0;i<startDow;i++) cells += `<div class="cal-day empty"></div>`;
+  for(let d=1; d<=daysInMonth; d++){
+    const iso = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = iso===todayISO();
+    const isSel = iso===STATE.selectedDay;
+    const dayEvents = events[iso]||[];
+    const dots = dayEvents.slice(0,3).map(e=>`<span class="cal-dot" style="background:${e.color}"></span>`).join('');
+    cells += `<div class="cal-day ${isToday?'today':''} ${isSel?'selected':''}" onclick="selectDay('${iso}')">
+      ${d}${dots?`<div class="cal-dots">${dots}</div>`:''}
+    </div>`;
+  }
+  const selEvents = (events[STATE.selectedDay]||[]);
+  const selLabel = STATE.selectedDay ? new Date(STATE.selectedDay+'T00:00:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'}) : '';
+  return `
+    <div class="cal-nav">
+      <button onclick="shiftMonth(-1)">‹</button>
+      <div class="month-label">${monthLabel}</div>
+      <button onclick="shiftMonth(1)">›</button>
+    </div>
+    <div class="cal-grid">
+      ${dows.map(d=>`<div class="cal-dow">${d}</div>`).join('')}
+      ${cells}
+    </div>
+    <div class="day-events">
+      <h3>${selLabel||'Elegí un día'}</h3>
+      ${selEvents.length===0 ? `<div class="empty-state" style="padding:20px 0;"><div class="e">📭</div><p>Sin eventos este día.</p></div>` :
+        selEvents.map(e=>`<div class="event-row"><span class="event-dot" style="background:${e.color}"></span>${escapeHtml(e.label)}</div>`).join('')}
+    </div>
+  `;
+}
+function shiftMonth(delta){
+  let m = STATE.calMonth+delta, y = STATE.calYear;
+  if(m<0){m=11;y--;} if(m>11){m=0;y++;}
+  STATE.calMonth=m; STATE.calYear=y; render();
+}
+function selectDay(iso){ STATE.selectedDay=iso; render(); }
+
+/* ---- Medicación tab ---- */
+function tabMedicacion(pet){
+  const meds = STATE.petData[pet.id].meds||[];
+  if(meds.length===0) return `<div class="section-title">Medicación</div><div class="empty-state"><div class="e">💊</div><p>Todavía no cargaste medicaciones.<br>Tocá el botón + para agregar una.</p></div>`;
+  const today = todayISO();
+  const sorted = [...meds].sort((a,b)=>{
+    const na=nextMedDue(a), nb=nextMedDue(b);
+    if(!na && !nb) return 0; if(!na) return 1; if(!nb) return -1;
+    return na<nb?-1:1;
+  });
+  return `
+    <div class="section-title">Medicación</div>
+    <div class="section-hint">${meds.length} registrada${meds.length===1?'':'s'}</div>
+    ${sorted.map(m=>{
+      const next = nextMedDue(m);
+      let badgeClass='', badgeText='';
+      if(next===null){ badgeClass='ghost'; badgeText='Fin'; }
+      else{
+        const diff = daysBetween(today,next);
+        badgeClass = diff<0?'overdue':(diff<=1?'due':'');
+        badgeText = diff===0?'HOY':(diff<0?Math.abs(diff)+'d\ntarde':(diff+'d'));
+      }
+      return `
+      <div class="stamp-card">
+        <div class="row1">
+          <div>
+            <div class="name">${escapeHtml(m.name)}</div>
+            <div class="detail">${escapeHtml(m.dose||'')}${m.dose?' · ':''}${m.type==='single'?'Dosis única':'Cada '+m.freqDays+' días'}<br>
+            Desde ${fmtDate(m.startDate)}${m.endDate?' hasta '+fmtDate(m.endDate):''}</div>
+          </div>
+          <div class="badge-circle ${badgeClass}"><div class="num">${next?fmtDate(next).split(' ')[0]:'✓'}</div><div>${next?fmtDate(next).split(' ')[1].replace('.',''):'listo'}</div></div>
+        </div>
+        ${waEntryStatusHtml(pet, m, 'med')}
+        <div class="stamp-actions">
+          ${next && m.type!=='single' ? `<button class="mini-btn" onclick="markMedDone('${pet.id}','${m.id}','${next}')">Marcar aplicada</button>`:''}
+          ${next && m.type==='single' ? `<button class="mini-btn" onclick="markSingleMedDone('${pet.id}','${m.id}')">Marcar aplicada</button>`:''}
+          <button class="mini-btn ghost" onclick="deleteEntry('${pet.id}','meds','${m.id}')">Eliminar</button>
+        </div>
+      </div>`;
+    }).join('')}
+  `;
+}
+async function markMedDone(petId, medId, dateISO){
+  const med = STATE.petData[petId].meds.find(m=>m.id===medId);
+  med.doneDates = med.doneDates||[]; med.doneDates.push(dateISO);
+  await savePetData(petId); render();
+}
+async function markSingleMedDone(petId, medId){
+  const med = STATE.petData[petId].meds.find(m=>m.id===medId);
+  med.done = true;
+  await savePetData(petId); render();
+}
+
+/* ---- Vacunas tab ---- */
+function tabVacunas(pet){
+  const vax = STATE.petData[pet.id].vaccines||[];
+  if(vax.length===0) return `<div class="section-title">Vacunas</div><div class="empty-state"><div class="e">💉</div><p>Todavía no registraste vacunas.<br>Tocá el botón + para agregar una.</p></div>`;
+  const sorted = [...vax].sort((a,b)=> (b.dateApplied||'').localeCompare(a.dateApplied||''));
+  return `
+    <div class="section-title">Vacunas</div>
+    <div class="section-hint">${vax.length} en el historial</div>
+    ${sorted.map(v=>`
+      <div class="stamp-card">
+        <div class="row1">
+          <div>
+            <div class="name">${escapeHtml(v.name)}</div>
+            <div class="detail">Aplicada el ${fmtDate(v.dateApplied)}${v.nextDue?`<br>Próxima: ${fmtDate(v.nextDue)}`:''}${v.notes?`<br>${escapeHtml(v.notes)}`:''}</div>
+          </div>
+        </div>
+        <div class="stamp-actions">
+          <button class="mini-btn ghost" onclick="deleteEntry('${pet.id}','vaccines','${v.id}')">Eliminar</button>
+        </div>
+      </div>`).join('')}
+  `;
+}
+
+/* ---- Consultas tab ---- */
+function tabConsultas(pet){
+  const list = STATE.petData[pet.id].consultas||[];
+  if(list.length===0) return `<div class="section-title">Consultas</div><div class="empty-state"><div class="e">🩺</div><p>Todavía no cargaste consultas.<br>Tocá el botón + para agregar la próxima.</p></div>`;
+  const sorted = [...list].sort((a,b)=> (a.fecha||'').localeCompare(b.fecha||''));
+  const today = todayISO();
+  return `
+    <div class="section-title">Consultas</div>
+    <div class="section-hint">${list.length} registrada${list.length===1?'':'s'}</div>
+    ${sorted.map(c=>{
+      const diff = c.fecha ? daysBetween(today,c.fecha) : null;
+      const badgeClass = diff===null?'ghost':(diff<0?'ghost':(diff<=1?'due':''));
+      return `
+      <div class="stamp-card">
+        <div class="row1">
+          <div>
+            <div class="name">${escapeHtml(c.motivo||'Consulta veterinaria')}</div>
+            <div class="detail">${fmtDate(c.fecha)}${c.hora?' · '+c.hora:''}${c.notas?`<br>${escapeHtml(c.notas)}`:''}</div>
+          </div>
+          ${diff!==null?`<div class="badge-circle ${badgeClass}"><div class="num">${dayLabel(diff).split(' ')[0]}</div></div>`:''}
+        </div>
+        ${waEntryStatusHtml(pet, c, 'consulta')}
+        <div class="stamp-actions">
+          <button class="mini-btn ghost" onclick="deleteEntry('${pet.id}','consultas','${c.id}')">Eliminar</button>
+        </div>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+/* ---- Peso tab ---- */
+function tabPeso(pet){
+  const w = [...(STATE.petData[pet.id].weights||[])].sort((a,b)=>a.date.localeCompare(b.date));
+  if(w.length===0) return `<div class="section-title">Peso</div><div class="empty-state"><div class="e">⚖️</div><p>Todavía no cargaste pesadas.<br>Tocá el botón + para registrar una.</p></div>`;
+  const last = w[w.length-1];
+  const prev = w.length>1 ? w[w.length-2] : null;
+  const delta = prev ? (last.value-prev.value) : null;
+  const spark = sparklineSVG(w);
+  const reversed = [...w].reverse();
+  return `
+    <div class="section-title">Peso</div>
+    <div class="weight-current">
+      <div>
+        <div class="big">${last.value}${last.unit}</div>
+        <div class="delta">${delta!==null ? (delta>0?'▲ +':delta<0?'▼ ':'= ')+Math.abs(delta).toFixed(1)+last.unit+' desde la anterior' : 'Primer registro'}</div>
+      </div>
+      <div style="font-size:30px;">⚖️</div>
+    </div>
+    <div class="sparkline-wrap">${spark}</div>
+    ${reversed.map((row,i)=>{
+      const idx = w.length-1-i;
+      const p = w[idx-1];
+      const d = p ? row.value-p.value : null;
+      return `<div class="weight-row">
+        <div><div class="v">${row.value}${row.unit}</div><div class="d">${fmtDate(row.date)}</div></div>
+        ${d!==null ? `<span class="delta-tag ${d>0?'delta-up':d<0?'delta-down':''}">${d>0?'+':''}${d.toFixed(1)}${row.unit}</span>`:''}
+      </div>`;
+    }).join('')}
+  `;
+}
+function sparklineSVG(w){
+  if(w.length<2) return '';
+  const vals = w.map(x=>x.value);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const range = (max-min)||1;
+  const W=440,H=70,pad=8;
+  const pts = w.map((row,i)=>{
+    const x = pad + (i/(w.length-1))*(W-pad*2);
+    const y = H-pad - ((row.value-min)/range)*(H-pad*2);
+    return `${x},${y}`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:70px;">
+    <polyline points="${pts.join(' ')}" fill="none" stroke="var(--pine)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    ${pts.map(p=>{const [x,y]=p.split(',');return `<circle cx="${x}" cy="${y}" r="3.5" fill="var(--butter)" stroke="var(--pine)" stroke-width="1.5"/>`}).join('')}
+  </svg>`;
+}
+
+/* ---- Notas tab ---- */
+function tabNotas(pet){
+  const notes = [...(STATE.petData[pet.id].notes||[])].sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+  if(notes.length===0) return `<div class="section-title">Notas</div><div class="empty-state"><div class="e">📝</div><p>Todavía no hay notas.<br>Tocá el botón + para anotar algo.</p></div>`;
+  return `
+    <div class="section-title">Notas</div>
+    ${notes.map(n=>`
+      <div class="note-card">
+        <p>${escapeHtml(n.text)}</p>
+        <div class="meta">${n.reminderDate? '⏰ Recordar el '+fmtDate(n.reminderDate)+' · ' : ''}Anotado el ${fmtDate(n.createdAt)}
+          <span style="cursor:pointer;color:var(--coral);font-weight:600;margin-left:8px;" onclick="deleteEntry('${pet.id}','notes','${n.id}')">Eliminar</span>
+        </div>
+      </div>`).join('')}
+  `;
+}
+
+/* ---- Perfil tab ---- */
+function tabPerfil(pet){
+  const sexLabel = {macho:'Macho',hembra:'Hembra',nose:'No especificado'}[pet.sex];
+  const neutLabel = {si:'Sí',no:'No',nose:'No sé'}[pet.neutered];
+  return `
+    <div class="profile-avatar">${pet.emoji}</div>
+    <div class="section-title" style="text-align:center;">${escapeHtml(pet.name)}</div>
+    <div class="section-hint" style="text-align:center;">${speciesInfo(pet.species).label}</div>
+    <div style="margin-top:10px;">
+      <div class="profile-row"><span class="k">Raza</span><span class="v">${escapeHtml(pet.breed)||'—'}</span></div>
+      <div class="profile-row"><span class="k">Sexo</span><span class="v">${sexLabel}</span></div>
+      <div class="profile-row"><span class="k">Esterilizado/a</span><span class="v">${neutLabel}</span></div>
+      <div class="profile-row"><span class="k">Edad</span><span class="v">${petAge(pet)}</span></div>
+      <div class="profile-row"><span class="k">Nacimiento</span><span class="v">${pet.birthMode==='estimate'?'Estimado':fmtDate(pet.birthDate)}</span></div>
+      <div class="profile-row"><span class="k">Ficha creada</span><span class="v">${fmtDate(pet.createdAt)}</span></div>
+    </div>
+    <div class="allergy-box">
+      <div class="t">⚠️ Alergias</div>
+      <textarea id="allergy-input" placeholder="Ej: penicilina, pollo, picadura de pulga…" oninput="STATE._allergyDraft='${pet.id}'" onblur="saveAllergies('${pet.id}', this.value)">${escapeHtml(pet.allergies||'')}</textarea>
+      <div class="allergy-warn" style="color:rgba(19,36,32,0.5);margin-top:6px;">Se guarda automáticamente al salir del campo.</div>
+    </div>
+    <button class="btn-primary" style="margin-top:6px;" onclick="printSummary('${pet.id}')">🖨️ Generar resumen para compartir</button>
+    <button class="btn-secondary btn-danger" onclick="deletePet('${pet.id}')">Eliminar mascota</button>
+  `;
+}
+
+async function saveAllergies(petId, value){
+  const pet = STATE.pets.find(p=>p.id===petId);
+  if(!pet) return;
+  pet.allergies = value.trim();
+  await savePets();
+}
+
+async function deletePet(petId){
+  if(!confirm('¿Eliminar esta ficha y todo su historial? Esta acción no se puede deshacer.')) return;
+  STATE.pets = STATE.pets.filter(p=>p.id!==petId);
+  delete STATE.petData[petId];
+  await savePets();
+  try{ await window.storage.delete('pet-data:'+petId, false); }catch(e){}
+  goHome();
+}
+
+async function deleteEntry(petId, coll, entryId){
+  STATE.petData[petId][coll] = STATE.petData[petId][coll].filter(x=>x.id!==entryId);
+  await savePetData(petId); render();
+}
+
+/* ============================= PRINT SUMMARY ============================= */
+function printSummary(petId){
+  const pet = STATE.pets.find(p=>p.id===petId);
+  const data = STATE.petData[petId];
+  const meds = data.meds||[], vax = data.vaccines||[], weights=[...(data.weights||[])].sort((a,b)=>a.date.localeCompare(b.date));
+  const lastWeight = weights[weights.length-1];
+  const area = document.getElementById('print-area');
+  area.innerHTML = `
+    <div style="font-family:'Fraunces',serif;">
+      <h1 style="margin-bottom:0;">${escapeHtml(pet.name)}</h1>
+      <p style="font-family:'Inter',sans-serif;color:#555;margin-top:4px;">${speciesInfo(pet.species).label} ${pet.breed?'· '+escapeHtml(pet.breed):''} · ${petAge(pet)} · Generado el ${fmtDate(todayISO())}</p>
+      <hr>
+      ${pet.allergies?`<h3>Alergias</h3><p>${escapeHtml(pet.allergies)}</p>`:''}
+      <h3>Medicación</h3>
+      ${meds.length===0?'<p>Sin registros.</p>':`<ul>${meds.map(m=>`<li>${escapeHtml(m.name)} — ${escapeHtml(m.dose||'')} — ${m.type==='single'?'dosis única':'cada '+m.freqDays+' días'} (desde ${fmtDate(m.startDate)}${m.endDate?' hasta '+fmtDate(m.endDate):''})</li>`).join('')}</ul>`}
+      <h3>Vacunas</h3>
+      ${vax.length===0?'<p>Sin registros.</p>':`<ul>${vax.map(v=>`<li>${escapeHtml(v.name)} — aplicada ${fmtDate(v.dateApplied)}${v.nextDue?' — próxima '+fmtDate(v.nextDue):''}</li>`).join('')}</ul>`}
+      <h3>Consultas</h3>
+      ${(data.consultas||[]).length===0?'<p>Sin registros.</p>':`<ul>${data.consultas.map(c=>`<li>${escapeHtml(c.motivo||'Consulta')} — ${fmtDate(c.fecha)}${c.hora?' '+c.hora:''}</li>`).join('')}</ul>`}
+      <h3>Peso</h3>
+      ${lastWeight?`<p>Último registro: ${lastWeight.value}${lastWeight.unit} (${fmtDate(lastWeight.date)})</p>`:'<p>Sin registros.</p>'}
+      <h3>Notas</h3>
+      ${(data.notes||[]).length===0?'<p>Sin notas.</p>':`<ul>${data.notes.map(n=>`<li>${escapeHtml(n.text)} ${n.reminderDate?'(recordatorio: '+fmtDate(n.reminderDate)+')':''}</li>`).join('')}</ul>`}
+    </div>
+  `;
+  setTimeout(()=>window.print(), 100);
+}
+
+/* ============================= MODALS (add entries) ============================= */
+function openModal(type){ STATE.modal = {type, draft:{}}; render(); }
+function closeModal(){ STATE.modal=null; render(); }
+
+function renderModal(){
+  const c = document.getElementById('modal-container');
+  if(!STATE.modal){ c.innerHTML=''; return; }
+  const t = STATE.modal.type;
+  let body='', title='';
+  if(t==='med'){ title='Agregar medicación'; body=modalMedForm(); }
+  if(t==='vaccine'){ title='Agregar vacuna'; body=modalVaccineForm(); }
+  if(t==='consulta'){ title='Agregar consulta'; body=modalAppointmentForm(); }
+  if(t==='weight'){ title='Registrar peso'; body=modalWeightForm(); }
+  if(t==='note'){ title='Agregar nota'; body=modalNoteForm(); }
+  c.innerHTML = `
+    <div class="overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <div class="modal-head"><h2>${title}</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
+        ${body}
+      </div>
+    </div>`;
+}
+
+function modalMedForm(){
+  const d = STATE.modal.draft;
+  return `
+    <div class="field"><label>Nombre</label><input type="text" placeholder="Ej: Amoxicilina" oninput="STATE.modal.draft.name=this.value" value="${escapeHtml(d.name||'')}"></div>
+    <div class="field"><label>Dosis</label><input type="text" placeholder="Ej: 1 comprimido, 5ml…" oninput="STATE.modal.draft.dose=this.value" value="${escapeHtml(d.dose||'')}"></div>
+    <div class="field">
+      <label>Tipo</label>
+      <div class="pill-row">
+        <button class="pill ${d.type!=='single'?'selected':''}" onclick="STATE.modal.draft.type='interval';render()">Intervalo (cada X días)</button>
+        <button class="pill ${d.type==='single'?'selected':''}" onclick="STATE.modal.draft.type='single';render()">Dosis única</button>
+      </div>
+    </div>
+    ${d.type==='single' ? `
+      <div class="field"><label>Fecha</label><input type="date" value="${d.startDate||todayISO()}" oninput="STATE.modal.draft.startDate=this.value"></div>
+    ` : `
+      <div class="field"><label>Cada cuántos días</label><input type="number" min="1" placeholder="Ej: 7" value="${d.freqDays||''}" oninput="STATE.modal.draft.freqDays=parseInt(this.value||1)"></div>
+      <div class="field"><label>Fecha de inicio</label><input type="date" value="${d.startDate||todayISO()}" oninput="STATE.modal.draft.startDate=this.value"></div>
+      <div class="field"><label>Fecha de fin (opcional)</label><input type="date" value="${d.endDate||''}" oninput="STATE.modal.draft.endDate=this.value"></div>
+    `}
+    ${waFieldsHtml(d)}
+    <button class="btn-primary" onclick="saveMedModal()">Guardar</button>
+  `;
+}
+async function saveMedModal(){
+  const d = STATE.modal.draft;
+  if(!d.name || !d.name.trim()){ alert('Poné un nombre para la medicación.'); return; }
+  d.type = d.type==='single' ? 'single' : 'interval';
+  d.startDate = d.startDate || todayISO();
+  if(d.type==='interval' && !d.freqDays){ alert('Indicá cada cuántos días se aplica.'); return; }
+  const med = {id:uid(), name:d.name.trim(), dose:d.dose||'', type:d.type, startDate:d.startDate, endDate:d.endDate||'', freqDays:d.freqDays||1, doneDates:[], done:false, whatsapp: d.whatsapp||{enabled:false}};
+  const pet = STATE.pets.find(p=>p.id===STATE.activePetId);
+  STATE.petData[pet.id].meds.push(med);
+  await savePetData(pet.id); closeModal();
+}
+
+function modalVaccineForm(){
+  const d = STATE.modal.draft;
+  return `
+    <div class="field"><label>Nombre</label><input type="text" placeholder="Ej: Rabia, Triple felina…" oninput="STATE.modal.draft.name=this.value" value="${escapeHtml(d.name||'')}"></div>
+    <div class="field"><label>Fecha de aplicación</label><input type="date" value="${d.dateApplied||todayISO()}" oninput="STATE.modal.draft.dateApplied=this.value"></div>
+    <div class="field"><label>Próxima dosis (opcional)</label><input type="date" value="${d.nextDue||''}" oninput="STATE.modal.draft.nextDue=this.value"></div>
+    <div class="field"><label>Notas (opcional)</label><input type="text" value="${escapeHtml(d.notes||'')}" oninput="STATE.modal.draft.notes=this.value"></div>
+    <button class="btn-primary" onclick="saveVaccineModal()">Guardar</button>
+  `;
+}
+async function saveVaccineModal(){
+  const d = STATE.modal.draft;
+  if(!d.name || !d.name.trim()){ alert('Poné el nombre de la vacuna.'); return; }
+  const v = {id:uid(), name:d.name.trim(), dateApplied:d.dateApplied||todayISO(), nextDue:d.nextDue||'', notes:d.notes||''};
+  const pet = STATE.pets.find(p=>p.id===STATE.activePetId);
+  STATE.petData[pet.id].vaccines.push(v);
+  await savePetData(pet.id); closeModal();
+}
+
+function modalAppointmentForm(){
+  const d = STATE.modal.draft;
+  return `
+    <div class="field"><label>Motivo</label><input type="text" placeholder="Ej: Control anual, revisión de piel…" oninput="STATE.modal.draft.motivo=this.value" value="${escapeHtml(d.motivo||'')}"></div>
+    <div class="wa-row">
+      <div class="field"><label>Fecha</label><input type="date" value="${d.fecha||''}" oninput="STATE.modal.draft.fecha=this.value"></div>
+      <div class="field"><label>Hora (opcional)</label><input type="time" value="${d.hora||''}" oninput="STATE.modal.draft.hora=this.value"></div>
+    </div>
+    <div class="field"><label>Notas (opcional)</label><input type="text" value="${escapeHtml(d.notas||'')}" oninput="STATE.modal.draft.notas=this.value"></div>
+    ${waFieldsHtml(d)}
+    <button class="btn-primary" onclick="saveAppointmentModal()">Guardar</button>
+  `;
+}
+async function saveAppointmentModal(){
+  const d = STATE.modal.draft;
+  if(!d.fecha){ alert('Elegí la fecha de la consulta.'); return; }
+  const c = {id:uid(), motivo:d.motivo||'', fecha:d.fecha, hora:d.hora||'', notas:d.notas||'', whatsapp: d.whatsapp||{enabled:false}};
+  const pet = STATE.pets.find(p=>p.id===STATE.activePetId);
+  STATE.petData[pet.id].consultas.push(c);
+  await savePetData(pet.id); closeModal();
+}
+
+function modalWeightForm(){
+  const d = STATE.modal.draft;
+  if(!d.unit) d.unit='kg';
+  return `
+    <div class="field"><label>Peso</label><input type="number" step="0.01" min="0" placeholder="Ej: 4.2" value="${d.value||''}" oninput="STATE.modal.draft.value=this.value"></div>
+    <div class="field">
+      <label>Unidad</label>
+      <div class="pill-row">
+        <button class="pill ${d.unit==='kg'?'selected':''}" onclick="STATE.modal.draft.unit='kg';render()">kg</button>
+        <button class="pill ${d.unit==='lb'?'selected':''}" onclick="STATE.modal.draft.unit='lb';render()">lb</button>
+      </div>
+    </div>
+    <div class="field"><label>Fecha</label><input type="date" value="${d.date||todayISO()}" oninput="STATE.modal.draft.date=this.value"></div>
+    <button class="btn-primary" onclick="saveWeightModal()">Guardar</button>
+  `;
+}
+async function saveWeightModal(){
+  const d = STATE.modal.draft;
+  if(!d.value || isNaN(parseFloat(d.value))){ alert('Ingresá un peso válido.'); return; }
+  const w = {id:uid(), value:parseFloat(parseFloat(d.value).toFixed(2)), unit:d.unit||'kg', date:d.date||todayISO()};
+  const pet = STATE.pets.find(p=>p.id===STATE.activePetId);
+  STATE.petData[pet.id].weights.push(w);
+  await savePetData(pet.id); closeModal();
+}
+
+function modalNoteForm(){
+  const d = STATE.modal.draft;
+  return `
+    <div class="field"><label>Nota</label><textarea placeholder="Ej: Se rascó mucho la oreja izquierda…" oninput="STATE.modal.draft.text=this.value">${escapeHtml(d.text||'')}</textarea></div>
+    <div class="field"><label>Recordatorio (opcional)</label><input type="date" value="${d.reminderDate||''}" oninput="STATE.modal.draft.reminderDate=this.value"></div>
+    <button class="btn-primary" onclick="saveNoteModal()">Guardar</button>
+  `;
+}
+async function saveNoteModal(){
+  const d = STATE.modal.draft;
+  if(!d.text || !d.text.trim()){ alert('Escribí algo en la nota.'); return; }
+  const n = {id:uid(), text:d.text.trim(), reminderDate:d.reminderDate||'', createdAt:todayISO()};
+  const pet = STATE.pets.find(p=>p.id===STATE.activePetId);
+  STATE.petData[pet.id].notes.push(n);
+  await savePetData(pet.id); closeModal();
+}
+
+/* ============================= INIT ============================= */
+loadAll();
+</script>
+</body>
+</html>
