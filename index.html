@@ -161,6 +161,13 @@
     padding:4px 8px;border-radius:20px;white-space:nowrap;
   }
   .pet-card .next-badge.urgent{background:var(--coral);color:#fff;}
+  .pet-card .share-icon-btn{
+    width:34px;height:34px;border-radius:50%;flex-shrink:0;
+    background:none;border:1.5px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+    font-size:15px;cursor:pointer;color:var(--pine);
+  }
+  .pet-card .share-icon-btn:active{background:var(--pine);color:var(--paper);border-color:var(--pine);}
 
   .add-pet-card{
     display:flex;align-items:center;justify-content:center;gap:8px;
@@ -453,6 +460,34 @@
     font-family:'Inter',sans-serif;font-size:13.5px;min-height:56px;background:#fff;color:var(--ink);
   }
   .allergy-warn{font-size:12px;margin-top:2px;}
+
+  /* ---------- Share sheet ---------- */
+  .share-sheet{
+    background:var(--paper-dim);border:1.5px dashed var(--pine);border-radius:18px;
+    padding:22px 20px;margin-bottom:18px;
+  }
+  .sheet-header{display:flex;align-items:center;gap:14px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px dashed var(--line);}
+  .sheet-header .avatar{width:64px;height:64px;border-radius:50%;background:var(--butter);border:2px solid var(--pine);display:flex;align-items:center;justify-content:center;font-size:32px;flex-shrink:0;}
+  .sheet-header .name{font-family:'Fraunces',serif;font-weight:700;font-size:20px;}
+  .sheet-header .sub{font-size:12.5px;color:rgba(19,36,32,0.6);margin-top:2px;}
+  .sheet-block{margin-bottom:16px;}
+  .sheet-block:last-child{margin-bottom:0;}
+  .sheet-block .lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--pine);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+  .sheet-block.warn .lbl{color:var(--coral);}
+  .sheet-block .empty{font-size:13px;color:rgba(19,36,32,0.4);font-style:italic;}
+  .sheet-line{font-size:13.5px;line-height:1.6;padding:6px 0;border-bottom:1px solid var(--line);}
+  .sheet-line:last-child{border-bottom:none;}
+  .sheet-line b{font-weight:700;}
+  .share-actions{display:flex;flex-direction:column;gap:10px;margin-top:6px;}
+  .share-btn{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    padding:14px;border-radius:12px;border:none;font-weight:700;font-size:14px;
+    cursor:pointer;font-family:'Inter',sans-serif;text-decoration:none;
+  }
+  .share-btn.wa{background:var(--whatsapp);color:#fff;}
+  .share-btn.wa:active{background:var(--whatsapp-dark);}
+  .share-btn.copy{background:var(--pine);color:var(--paper);}
+  .share-btn.print{background:none;border:1.5px solid var(--line);color:var(--pine-dark);}
 </style>
 </head>
 <body>
@@ -738,6 +773,17 @@ function renderTopbar(){
       </div>`;
     return;
   }
+  if(STATE.view==='share'){
+    const pet = STATE.pets.find(p=>p.id===STATE.activePetId);
+    el.innerHTML = `
+      <div class="topbar">
+        <div class="topbar-row">
+          <button class="back-btn" onclick="backToProfile()">←</button>
+          <div class="brand" style="font-size:18px;">Compartir ${pet?escapeHtml(pet.name):''}</div>
+        </div>
+      </div>`;
+    return;
+  }
   if(STATE.view==='dashboard'){
     const pet = STATE.pets.find(p=>p.id===STATE.activePetId);
     if(!pet){ el.innerHTML=''; return; }
@@ -768,6 +814,7 @@ function renderContent(){
   if(STATE.view==='addSpecies') return el.innerHTML = viewAddSpecies();
   if(STATE.view==='addPetForm') return el.innerHTML = viewAddPetForm();
   if(STATE.view==='learn') return el.innerHTML = viewLearn();
+  if(STATE.view==='share') return el.innerHTML = viewShareSheet();
   if(STATE.view==='dashboard') return el.innerHTML = viewDashboard();
   if(STATE.view==='print') return el.innerHTML = '';
 }
@@ -851,6 +898,7 @@ function petCardHtml(pet){
         <div class="meta">${speciesInfo(pet.species).label}${pet.breed?' · '+escapeHtml(pet.breed):''}${pet.allergies?' · ⚠️ alergias':''}</div>
       </div>
       ${badge}
+      <button class="share-icon-btn" title="Compartir info de ${escapeHtml(pet.name)}" onclick="event.stopPropagation(); goShareSheet('${pet.id}')">📤</button>
     </div>`;
 }
 
@@ -867,6 +915,11 @@ function speciesGridHtml(){
 function goHome(){ STATE.view='home'; STATE.activePetId=null; render(); }
 function goAddSpecies(){ STATE.view='addSpecies'; render(); }
 function goLearn(){ STATE.view='learn'; render(); }
+function goShareSheet(petId, from){ STATE.activePetId=petId; STATE._shareFrom = from || (STATE.view==='dashboard' ? 'profile' : 'home'); STATE.view='share'; render(); }
+function backToProfile(){
+  if(STATE._shareFrom==='home'){ goHome(); return; }
+  STATE.view='dashboard'; STATE.tab='perfil'; render();
+}
 function pickSpecies(id){ STATE.pendingSpecies=id; STATE.view='addPetForm'; STATE._newPet = {emoji: speciesInfo(id).emojis[0], sex:null, neutered:null, birthMode:'exact'}; render(); }
 function openPet(id){ STATE.activePetId=id; STATE.tab='calendario'; STATE.selectedDay=todayISO(); STATE.calMonth=new Date().getMonth(); STATE.calYear=new Date().getFullYear(); STATE.view='dashboard'; render(); }
 function setTab(t){ STATE.tab=t; render(); }
@@ -984,7 +1037,123 @@ function viewLearn(){
   `;
 }
 
-/* ============================= DASHBOARD ============================= */
+/* ============================= SHARE SHEET VIEW ============================= */
+function viewShareSheet(){
+  const pet = STATE.pets.find(p=>p.id===STATE.activePetId);
+  if(!pet) return '';
+  const data = STATE.petData[pet.id];
+  const today = todayISO();
+
+  const activeMeds = (data.meds||[]).filter(m=> nextMedDue(m)!==null);
+  const vax = [...(data.vaccines||[])].sort((a,b)=>(b.dateApplied||'').localeCompare(a.dateApplied||''));
+  const upcomingConsultas = [...(data.consultas||[])].filter(c=>c.fecha>=today).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const weights = [...(data.weights||[])].sort((a,b)=>a.date.localeCompare(b.date));
+  const lastWeight = weights[weights.length-1];
+  const recentNotes = [...(data.notes||[])].sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,4);
+
+  return `
+    <div class="section-title">Planilla para quien la cuide</div>
+    <div class="section-hint">Todo lo esencial de ${escapeHtml(pet.name)} en una sola pantalla — ideal para dejarla en una casa ajena.</div>
+
+    <div class="share-sheet">
+      <div class="sheet-header">
+        <div class="avatar">${pet.emoji}</div>
+        <div>
+          <div class="name">${escapeHtml(pet.name)}</div>
+          <div class="sub">${speciesInfo(pet.species).label}${pet.breed?' · '+escapeHtml(pet.breed):''} · ${petAge(pet)}</div>
+        </div>
+      </div>
+
+      <div class="sheet-block ${pet.allergies?'warn':''}">
+        <div class="lbl">⚠️ Alergias</div>
+        ${pet.allergies ? `<div class="sheet-line">${escapeHtml(pet.allergies)}</div>` : `<div class="empty">Sin alergias registradas.</div>`}
+      </div>
+
+      <div class="sheet-block">
+        <div class="lbl">💊 Medicación activa</div>
+        ${activeMeds.length===0 ? `<div class="empty">Sin medicación pendiente.</div>` :
+          activeMeds.map(m=>{
+            const n = nextMedDue(m);
+            return `<div class="sheet-line"><b>${escapeHtml(m.name)}</b>${m.dose?' — '+escapeHtml(m.dose):''}<br>${m.type==='single'?'Dosis única el '+fmtDate(m.startDate):'Cada '+m.freqDays+' días · próxima el '+fmtDate(n)}</div>`;
+          }).join('')}
+      </div>
+
+      <div class="sheet-block">
+        <div class="lbl">🩺 Próximas consultas</div>
+        ${upcomingConsultas.length===0 ? `<div class="empty">Sin consultas programadas.</div>` :
+          upcomingConsultas.map(c=>`<div class="sheet-line"><b>${fmtDate(c.fecha)}${c.hora?' · '+c.hora:''}</b> — ${escapeHtml(c.motivo||'Consulta veterinaria')}</div>`).join('')}
+      </div>
+
+      <div class="sheet-block">
+        <div class="lbl">💉 Vacunas</div>
+        ${vax.length===0 ? `<div class="empty">Sin vacunas registradas.</div>` :
+          vax.slice(0,4).map(v=>`<div class="sheet-line"><b>${escapeHtml(v.name)}</b> — aplicada ${fmtDate(v.dateApplied)}${v.nextDue?' · próxima '+fmtDate(v.nextDue):''}</div>`).join('')}
+      </div>
+
+      <div class="sheet-block">
+        <div class="lbl">⚖️ Último peso</div>
+        ${lastWeight ? `<div class="sheet-line">${lastWeight.value}${lastWeight.unit} — registrado el ${fmtDate(lastWeight.date)}</div>` : `<div class="empty">Sin registros de peso.</div>`}
+      </div>
+
+      <div class="sheet-block">
+        <div class="lbl">📝 Notas importantes</div>
+        ${recentNotes.length===0 ? `<div class="empty">Sin notas.</div>` :
+          recentNotes.map(n=>`<div class="sheet-line">${escapeHtml(n.text)}</div>`).join('')}
+      </div>
+    </div>
+
+    <div class="share-actions">
+      <a class="share-btn wa" href="${waLink('', buildShareText(pet))}" target="_blank" rel="noopener">📲 Compartir por WhatsApp</a>
+      <button class="share-btn copy" onclick="copyShareText('${pet.id}')">📋 Copiar texto</button>
+      <button class="share-btn print" onclick="printSummary('${pet.id}')">🖨️ Imprimir / guardar como PDF</button>
+    </div>
+  `;
+}
+
+function buildShareText(pet){
+  const data = STATE.petData[pet.id];
+  const today = todayISO();
+  const activeMeds = (data.meds||[]).filter(m=> nextMedDue(m)!==null);
+  const upcomingConsultas = [...(data.consultas||[])].filter(c=>c.fecha>=today).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const vax = [...(data.vaccines||[])].sort((a,b)=>(b.dateApplied||'').localeCompare(a.dateApplied||''));
+  const weights = [...(data.weights||[])].sort((a,b)=>a.date.localeCompare(b.date));
+  const lastWeight = weights[weights.length-1];
+
+  let lines = [];
+  lines.push(`🐾 Ficha de ${pet.name} (${speciesInfo(pet.species).label}${pet.breed?', '+pet.breed:''}, ${petAge(pet)})`);
+  lines.push('');
+  lines.push(`⚠️ Alergias: ${pet.allergies ? pet.allergies : 'ninguna registrada'}`);
+  lines.push('');
+  lines.push('💊 Medicación activa:');
+  lines.push(activeMeds.length===0 ? '- Ninguna' : activeMeds.map(m=>{
+    const n = nextMedDue(m);
+    return `- ${m.name}${m.dose?' ('+m.dose+')':''}: ${m.type==='single'?'dosis única el '+fmtDate(m.startDate):'cada '+m.freqDays+' días, próxima el '+fmtDate(n)}`;
+  }).join('\n'));
+  lines.push('');
+  lines.push('🩺 Próximas consultas:');
+  lines.push(upcomingConsultas.length===0 ? '- Ninguna programada' : upcomingConsultas.map(c=>`- ${fmtDate(c.fecha)}${c.hora?' '+c.hora:''}: ${c.motivo||'consulta veterinaria'}`).join('\n'));
+  lines.push('');
+  lines.push('💉 Vacunas recientes:');
+  lines.push(vax.length===0 ? '- Ninguna registrada' : vax.slice(0,4).map(v=>`- ${v.name}: aplicada ${fmtDate(v.dateApplied)}`).join('\n'));
+  lines.push('');
+  lines.push(`⚖️ Último peso: ${lastWeight ? lastWeight.value+lastWeight.unit+' ('+fmtDate(lastWeight.date)+')' : 'sin registros'}`);
+  lines.push('');
+  lines.push('Generado con Huellas 🐾');
+  return lines.join('\n');
+}
+
+async function copyShareText(petId){
+  const pet = STATE.pets.find(p=>p.id===petId);
+  const text = buildShareText(pet);
+  try{
+    await navigator.clipboard.writeText(text);
+    alert('Información copiada. Ya podés pegarla donde quieras.');
+  }catch(e){
+    alert('No se pudo copiar automáticamente. Elegí y copiá el texto manualmente si hace falta.');
+  }
+}
+
+
 function viewDashboard(){
   const pet = STATE.pets.find(p=>p.id===STATE.activePetId);
   if(!pet) return '';
@@ -1255,6 +1424,7 @@ function tabPerfil(pet){
       <div class="allergy-warn" style="color:rgba(19,36,32,0.5);margin-top:6px;">Se guarda automáticamente al salir del campo.</div>
     </div>
     <button class="btn-primary" style="margin-top:6px;" onclick="printSummary('${pet.id}')">🖨️ Generar resumen para compartir</button>
+    <button class="btn-secondary" onclick="goShareSheet('${pet.id}')">📋 Compartir info de ${escapeHtml(pet.name)}</button>
     <button class="btn-secondary btn-danger" onclick="deletePet('${pet.id}')">Eliminar mascota</button>
   `;
 }
