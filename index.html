@@ -95,24 +95,56 @@
   .pet-header .sub{font-size:12px;opacity:0.7;margin-top:1px;}
 
   /* ---------- Tabs ---------- */
-  .tabs{
-    display:flex;
-    background:var(--pine);
-    padding:0 12px;
-    overflow-x:auto;
-    scrollbar-width:none;
-    position:sticky;top:74px;z-index:19;
+  /* ---------- Section dropdown menu ---------- */
+  .section-bar-wrap{position:sticky;top:74px;z-index:19;}
+  .section-bar{
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--pine);color:var(--paper);
+    padding:13px 20px;cursor:pointer;
     box-shadow:0 2px 0 rgba(0,0,0,0.06);
   }
-  .tabs::-webkit-scrollbar{display:none;}
-  .tab-btn{
-    background:none;border:none;color:rgba(255,251,242,0.55);
-    font-family:'Inter',sans-serif;font-weight:600;font-size:13px;
-    padding:12px 12px 10px;cursor:pointer;white-space:nowrap;
-    border-bottom:3px solid transparent;
-    transition:color .15s;
+  .section-bar .current{font-family:'Inter',sans-serif;font-weight:700;font-size:14.5px;display:flex;align-items:center;gap:8px;}
+  .section-bar .chevron{transition:transform .15s;font-size:13px;color:var(--butter);}
+  .section-bar.open .chevron{transform:rotate(180deg);}
+  .section-dropdown{
+    position:absolute;top:100%;left:12px;right:12px;margin-top:8px;
+    background:var(--paper);border-radius:14px;border:1px solid var(--line);
+    box-shadow:var(--shadow);overflow:hidden;z-index:30;
+    animation:slideUp .16s ease-out;
   }
-  .tab-btn.active{color:var(--butter);border-bottom-color:var(--butter);}
+  .section-dropdown-item{
+    padding:13px 16px;font-size:14px;font-weight:600;color:var(--pine-dark);
+    cursor:pointer;display:flex;align-items:center;gap:10px;
+    border-bottom:1px solid var(--line);
+  }
+  .section-dropdown-item:last-child{border-bottom:none;}
+  .section-dropdown-item.active{background:var(--paper-dim);color:var(--pine);}
+  .section-dropdown-item:active{background:var(--butter);}
+  .menu-overlay{position:fixed;inset:0;z-index:29;background:transparent;}
+  .edit-pet-btn{
+    background:none;border:none;color:var(--paper);font-size:17px;cursor:pointer;
+    margin-left:auto;padding:6px;flex-shrink:0;
+  }
+  .profile-nav{
+    margin-top:14px;border:1px solid var(--line);border-radius:16px;
+    overflow:hidden;background:var(--paper-dim);
+  }
+  .profile-nav-item{
+    padding:15px 18px;font-size:14.5px;font-weight:700;color:var(--pine-dark);
+    cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;
+    border-bottom:1px solid var(--line);
+  }
+  .profile-nav-item:last-child{border-bottom:none;}
+  .profile-nav-item.active{background:var(--butter);}
+  .profile-nav-item.open{background:var(--butter);}
+  .profile-nav-item:active{background:var(--butter);}
+  .profile-nav-item .pnav-chevron{font-size:11px;color:rgba(19,36,32,0.55);flex-shrink:0;}
+  .profile-nav-item.open .pnav-chevron{color:var(--pine-dark);}
+  .profile-nav-content{
+    padding:16px 16px 18px;background:var(--paper);border-bottom:1px solid var(--line);
+  }
+  .profile-nav-content:last-child{border-bottom:none;}
+  .profile-nav-content .section-hint{margin-bottom:14px;}
 
   /* ---------- Content ---------- */
   #content{flex:1;padding:20px 20px 100px;}
@@ -165,9 +197,36 @@
     width:34px;height:34px;border-radius:50%;flex-shrink:0;
     background:none;border:1.5px solid var(--line);
     display:flex;align-items:center;justify-content:center;
-    font-size:15px;cursor:pointer;color:var(--pine);
+    cursor:pointer;color:var(--pine);padding:0;
   }
+  .pet-card .share-icon-btn svg{width:16px;height:16px;}
   .pet-card .share-icon-btn:active{background:var(--pine);color:var(--paper);border-color:var(--pine);}
+
+  /* ---------- Avatar photo support ---------- */
+  .pet-card .avatar, .pet-avatar-sm, .profile-avatar, .sheet-header .avatar{overflow:hidden;}
+  .pet-card .avatar img, .pet-avatar-sm img, .profile-avatar img, .sheet-header .avatar img{
+    width:100%;height:100%;object-fit:cover;border-radius:50%;
+  }
+  .photo-upload-btn{
+    width:44px;height:44px;border-radius:50%;border:2px solid var(--line);
+    background:var(--paper);cursor:pointer;overflow:hidden;display:flex;
+    align-items:center;justify-content:center;font-size:17px;padding:0;
+  }
+  .photo-upload-btn.selected{border-color:var(--pine);}
+  .photo-upload-btn img{width:100%;height:100%;object-fit:cover;}
+  .photo-gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px;}
+  .photo-thumb{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--paper-dim);border:1px solid var(--line);}
+  .photo-thumb img{width:100%;height:100%;object-fit:cover;}
+  .photo-thumb .photo-remove{
+    position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;
+    background:rgba(15,38,32,0.75);color:#fff;border:none;font-size:12px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;padding:0;
+  }
+  .photo-add-btn{
+    aspect-ratio:1;border-radius:12px;border:2px dashed var(--line);background:none;
+    display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--pine);
+    cursor:pointer;
+  }
 
   .add-pet-card{
     display:flex;align-items:center;justify-content:center;gap:8px;
@@ -514,6 +573,11 @@ const SPECIES = [
 ];
 const speciesInfo = id => SPECIES.find(s=>s.id===id) || SPECIES[SPECIES.length-1];
 
+const DASHBOARD_TABS = [
+  ['perfil','🪪','Perfil'],['calendario','📅','Calendario'],['medicacion','💊','Medicación'],
+  ['vacunas','💉','Vacunas'],['consultas','🩺','Consultas'],['peso','⚖️','Peso'],['notas','📝','Notas']
+];
+
 const WELLNESS_SIGNS = [
   {t:'Pérdida de apetito', e:'🍽️', d:'Si tu mascota rechaza la comida por más de un día, o come mucho menos de lo habitual, puede ser señal de dolor, problemas dentales o digestivos.'},
   {t:'Cambios en la energía', e:'😴', d:'Decaimiento, esconderse más de lo normal o rechazar el juego suelen aparecer antes que otros síntomas visibles.'},
@@ -531,6 +595,8 @@ let STATE = {
   view: 'home',        // home | addSpecies | addPetForm | dashboard | learn | print
   activePetId: null,
   tab: 'calendario',
+  menuOpen: false,
+  expandedSections: {},
   calMonth: new Date().getMonth(),
   calYear: new Date().getFullYear(),
   selectedDay: null,
@@ -552,11 +618,13 @@ async function loadAll(){
   }catch(e){ STATE.pets = []; }
   for(const pet of STATE.pets){
     if(pet.allergies===undefined) pet.allergies='';
+    if(pet.avatarType===undefined) pet.avatarType='emoji';
+    if(pet.photo===undefined) pet.photo='';
     try{
       const d = await window.storage.get('pet-data:'+pet.id, false);
-      STATE.petData[pet.id] = d ? JSON.parse(d.value) : {meds:[],vaccines:[],weights:[],notes:[],consultas:[]};
+      STATE.petData[pet.id] = d ? JSON.parse(d.value) : {meds:[],vaccines:[],weights:[],notes:[],consultas:[],photos:[]};
     }catch(e){
-      STATE.petData[pet.id] = {meds:[],vaccines:[],weights:[],notes:[],consultas:[]};
+      STATE.petData[pet.id] = {meds:[],vaccines:[],weights:[],notes:[],consultas:[],photos:[]};
     }
     const pd = STATE.petData[pet.id];
     if(!pd.consultas) pd.consultas=[];
@@ -564,6 +632,7 @@ async function loadAll(){
     if(!pd.vaccines) pd.vaccines=[];
     if(!pd.weights) pd.weights=[];
     if(!pd.notes) pd.notes=[];
+    if(!pd.photos) pd.photos=[];
   }
   STATE.loading = false;
   render();
@@ -787,23 +856,31 @@ function renderTopbar(){
   if(STATE.view==='dashboard'){
     const pet = STATE.pets.find(p=>p.id===STATE.activePetId);
     if(!pet){ el.innerHTML=''; return; }
-    const tabs = [
-      ['calendario','Calendario'],['medicacion','Medicación'],['vacunas','Vacunas'],
-      ['consultas','Consultas'],['peso','Peso'],['notas','Notas'],['perfil','Perfil']
-    ];
+    const tabs = DASHBOARD_TABS;
+    const cur = tabs.find(t=>t[0]===STATE.tab) || tabs[0];
     el.innerHTML = `
       <div class="topbar">
         <div class="topbar-row pet-header">
           <button class="back-btn" onclick="goHome()">←</button>
-          <div class="pet-avatar-sm">${pet.emoji}</div>
+          <div class="pet-avatar-sm">${avatarHtml(pet)}</div>
           <div>
             <h1>${escapeHtml(pet.name)}</h1>
             <div class="sub">${speciesInfo(pet.species).label} · ${petAge(pet)}</div>
           </div>
+          <button class="edit-pet-btn" title="Editar información de ${escapeHtml(pet.name)}" onclick="openEditPet('${pet.id}')">✏️</button>
         </div>
       </div>
-      <div class="tabs">
-        ${tabs.map(([id,label])=>`<button class="tab-btn ${STATE.tab===id?'active':''}" onclick="setTab('${id}')">${label}</button>`).join('')}
+      <div class="section-bar-wrap">
+        <div class="section-bar ${STATE.menuOpen?'open':''}" onclick="toggleTabMenu(event)">
+          <span class="current">${cur[1]} ${cur[2]}</span>
+          <span class="chevron">▾</span>
+        </div>
+        ${STATE.menuOpen ? `
+          <div class="menu-overlay" onclick="closeTabMenu()"></div>
+          <div class="section-dropdown">
+            ${tabs.map(([id,icon,label])=>`<div class="section-dropdown-item ${STATE.tab===id?'active':''}" onclick="setTab('${id}')">${icon} ${label}</div>`).join('')}
+          </div>
+        ` : ''}
       </div>`;
   }
 }
@@ -833,6 +910,42 @@ function renderFab(){
 }
 
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function shareIconSVG(){
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="18" cy="5" r="3"></circle>
+    <circle cx="6" cy="12" r="3"></circle>
+    <circle cx="18" cy="19" r="3"></circle>
+    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+  </svg>`;
+}
+function avatarHtml(pet){
+  if(pet.avatarType==='photo' && pet.photo) return `<img src="${pet.photo}" alt="${escapeHtml(pet.name)}">`;
+  return pet.emoji;
+}
+async function compressImageFile(file, maxDim, quality){
+  maxDim = maxDim || 640; quality = quality || 0.72;
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if(w>h){ if(w>maxDim){ h=Math.round(h*maxDim/w); w=maxDim; } }
+        else{ if(h>maxDim){ w=Math.round(w*maxDim/h); h=maxDim; } }
+        const canvas = document.createElement('canvas');
+        canvas.width=w; canvas.height=h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => reject(new Error('No se pudo leer la imagen'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+    reader.readAsDataURL(file);
+  });
+}
 
 /* ============================= HOME VIEW ============================= */
 function viewHome(){
@@ -892,13 +1005,13 @@ function petCardHtml(pet){
   }
   return `
     <div class="pet-card" onclick="openPet('${pet.id}')">
-      <div class="avatar">${pet.emoji}</div>
+      <div class="avatar">${avatarHtml(pet)}</div>
       <div class="info">
         <div class="name">${escapeHtml(pet.name)}</div>
         <div class="meta">${speciesInfo(pet.species).label}${pet.breed?' · '+escapeHtml(pet.breed):''}${pet.allergies?' · ⚠️ alergias':''}</div>
       </div>
       ${badge}
-      <button class="share-icon-btn" title="Compartir info de ${escapeHtml(pet.name)}" onclick="event.stopPropagation(); goShareSheet('${pet.id}')">📤</button>
+      <button class="share-icon-btn" title="Compartir info de ${escapeHtml(pet.name)}" onclick="event.stopPropagation(); goShareSheet('${pet.id}')">${shareIconSVG()}</button>
     </div>`;
 }
 
@@ -920,9 +1033,11 @@ function backToProfile(){
   if(STATE._shareFrom==='home'){ goHome(); return; }
   STATE.view='dashboard'; STATE.tab='perfil'; render();
 }
-function pickSpecies(id){ STATE.pendingSpecies=id; STATE.view='addPetForm'; STATE._newPet = {emoji: speciesInfo(id).emojis[0], sex:null, neutered:null, birthMode:'exact'}; render(); }
-function openPet(id){ STATE.activePetId=id; STATE.tab='calendario'; STATE.selectedDay=todayISO(); STATE.calMonth=new Date().getMonth(); STATE.calYear=new Date().getFullYear(); STATE.view='dashboard'; render(); }
-function setTab(t){ STATE.tab=t; render(); }
+function pickSpecies(id){ STATE.pendingSpecies=id; STATE.view='addPetForm'; STATE._newPet = {emoji: speciesInfo(id).emojis[0], avatarType:'emoji', photo:'', sex:null, neutered:null, birthMode:'exact'}; render(); }
+function openPet(id){ STATE.activePetId=id; STATE.tab='perfil'; STATE.menuOpen=false; STATE.expandedSections={}; STATE.selectedDay=todayISO(); STATE.calMonth=new Date().getMonth(); STATE.calYear=new Date().getFullYear(); STATE.view='dashboard'; render(); }
+function setTab(t){ STATE.tab=t; STATE.menuOpen=false; render(); }
+function toggleTabMenu(evt){ if(evt) evt.stopPropagation(); STATE.menuOpen=!STATE.menuOpen; render(); }
+function closeTabMenu(){ STATE.menuOpen=false; render(); }
 
 /* ============================= ADD SPECIES VIEW ============================= */
 function viewAddSpecies(){
@@ -944,8 +1059,10 @@ function viewAddPetForm(){
     <div class="field">
       <label>Avatar</label>
       <div class="emoji-pick">
-        ${sp.emojis.map(e=>`<button class="${np.emoji===e?'selected':''}" onclick="setNewPetField('emoji','${e}')">${e}</button>`).join('')}
+        ${sp.emojis.map(e=>`<button class="${(np.avatarType!=='photo' && np.emoji===e)?'selected':''}" onclick="setNewPetField('emoji','${e}')">${e}</button>`).join('')}
+        <button class="photo-upload-btn ${np.avatarType==='photo'?'selected':''}" onclick="triggerNewPetPhotoUpload()" title="Subir foto">${np.photo?`<img src="${np.photo}" alt="">`:'📷'}</button>
       </div>
+      <input type="file" id="np-photo-input" accept="image/*" style="display:none" onchange="handleNewPetPhoto(event)">
     </div>
 
     <div class="field">
@@ -967,6 +1084,7 @@ function viewAddPetForm(){
       </div>
     </div>
 
+    ${STATE.pendingSpecies!=='pez' ? `
     <div class="field">
       <label>Esterilizado/a</label>
       <div class="pill-row">
@@ -975,6 +1093,7 @@ function viewAddPetForm(){
         <button class="pill ${np.neutered==='nose'?'selected':''}" onclick="setNewPetField('neutered','nose')">No sé</button>
       </div>
     </div>
+    ` : ''}
 
     <div class="field">
       <label>Fecha de nacimiento</label>
@@ -1000,9 +1119,21 @@ function viewAddPetForm(){
 function setNewPetField(k,v){
   if(k==='estYears'||k==='estMonths') v = v===''? '' : parseInt(v,10);
   STATE._newPet[k]=v;
+  if(k==='emoji') STATE._newPet.avatarType='emoji';
   render();
   if(k==='name'){ const i=document.getElementById('np-name'); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length);} }
   if(k==='breed'){ const i=document.getElementById('np-breed'); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length);} }
+}
+function triggerNewPetPhotoUpload(){ document.getElementById('np-photo-input').click(); }
+async function handleNewPetPhoto(evt){
+  const file = evt.target.files[0]; if(!file) return;
+  try{
+    const dataUrl = await compressImageFile(file, 640, 0.75);
+    STATE._newPet.photo = dataUrl;
+    STATE._newPet.avatarType = 'photo';
+    render();
+  }catch(e){ alert('No se pudo procesar la imagen. Probá con otra foto.'); }
+  evt.target.value = '';
 }
 
 async function saveNewPet(){
@@ -1010,13 +1141,14 @@ async function saveNewPet(){
   if(!np.name || !np.name.trim()){ alert('Poné un nombre para continuar.'); return; }
   const pet = {
     id: uid(), name: np.name.trim(), species: STATE.pendingSpecies, emoji: np.emoji,
-    breed: np.breed||'', sex: np.sex||'nose', neutered: np.neutered||'nose',
+    photo: np.photo||'', avatarType: np.avatarType||'emoji',
+    breed: np.breed||'', sex: np.sex||'nose', neutered: STATE.pendingSpecies==='pez' ? '' : (np.neutered||'nose'),
     birthMode: np.birthMode||'exact', birthDate: np.birthDate||'',
     estYears: np.estYears||0, estMonths: np.estMonths||0, createdAt: todayISO(),
     allergies: ''
   };
   STATE.pets.push(pet);
-  STATE.petData[pet.id] = {meds:[],vaccines:[],weights:[],notes:[],consultas:[]};
+  STATE.petData[pet.id] = {meds:[],vaccines:[],weights:[],notes:[],consultas:[],photos:[]};
   await savePets();
   await savePetData(pet.id);
   STATE._newPet=null;
@@ -1057,7 +1189,7 @@ function viewShareSheet(){
 
     <div class="share-sheet">
       <div class="sheet-header">
-        <div class="avatar">${pet.emoji}</div>
+        <div class="avatar">${avatarHtml(pet)}</div>
         <div>
           <div class="name">${escapeHtml(pet.name)}</div>
           <div class="sub">${speciesInfo(pet.species).label}${pet.breed?' · '+escapeHtml(pet.breed):''} · ${petAge(pet)}</div>
@@ -1103,7 +1235,7 @@ function viewShareSheet(){
     </div>
 
     <div class="share-actions">
-      <a class="share-btn wa" href="${waLink('', buildShareText(pet))}" target="_blank" rel="noopener">📲 Compartir por WhatsApp</a>
+      <button class="share-btn wa" onclick="shareWithPhoto('${pet.id}')">📲 Compartir por WhatsApp${(pet.avatarType==='photo' && pet.photo) ? ' (con foto)' : ''}</button>
       <button class="share-btn copy" onclick="copyShareText('${pet.id}')">📋 Copiar texto</button>
       <button class="share-btn print" onclick="printSummary('${pet.id}')">🖨️ Imprimir / guardar como PDF</button>
     </div>
@@ -1140,6 +1272,27 @@ function buildShareText(pet){
   lines.push('');
   lines.push('Generado con Huellas 🐾');
   return lines.join('\n');
+}
+
+async function shareWithPhoto(petId){
+  const pet = STATE.pets.find(p=>p.id===petId);
+  const text = buildShareText(pet);
+  const hasPhoto = pet.avatarType==='photo' && !!pet.photo;
+
+  if(hasPhoto && navigator.share){
+    try{
+      const res = await fetch(pet.photo);
+      const blob = await res.blob();
+      const file = new File([blob], (pet.name||'mascota').replace(/[^a-z0-9]/gi,'_')+'.jpg', {type: blob.type || 'image/jpeg'});
+      if(navigator.canShare && navigator.canShare({files:[file]})){
+        await navigator.share({text, title:'Ficha de '+pet.name, files:[file]});
+        return;
+      }
+    }catch(e){
+      // el usuario canceló el share nativo, o el navegador no pudo adjuntar el archivo — seguimos con el fallback de texto
+    }
+  }
+  window.open(waLink('', text), '_blank', 'noopener');
 }
 
 async function copyShareText(petId){
@@ -1187,7 +1340,7 @@ function buildEventsForPet(pet){
   return events;
 }
 
-function tabCalendario(pet){
+function tabCalendario(pet, embedded){
   const events = buildEventsForPet(pet);
   const y = STATE.calYear, m = STATE.calMonth;
   const first = new Date(y,m,1);
@@ -1234,9 +1387,9 @@ function shiftMonth(delta){
 function selectDay(iso){ STATE.selectedDay=iso; render(); }
 
 /* ---- Medicación tab ---- */
-function tabMedicacion(pet){
+function tabMedicacion(pet, embedded){
   const meds = STATE.petData[pet.id].meds||[];
-  if(meds.length===0) return `<div class="section-title">Medicación</div><div class="empty-state"><div class="e">💊</div><p>Todavía no cargaste medicaciones.<br>Tocá el botón + para agregar una.</p></div>`;
+  if(meds.length===0) return `${embedded?'':'<div class="section-title">Medicación</div>'}<div class="empty-state"><div class="e">💊</div><p>Todavía no cargaste medicaciones.<br>Tocá "+ Agregar medicación" para cargar una.</p></div>`;
   const today = todayISO();
   const sorted = [...meds].sort((a,b)=>{
     const na=nextMedDue(a), nb=nextMedDue(b);
@@ -1244,7 +1397,7 @@ function tabMedicacion(pet){
     return na<nb?-1:1;
   });
   return `
-    <div class="section-title">Medicación</div>
+    ${embedded?'':'<div class="section-title">Medicación</div>'}
     <div class="section-hint">${meds.length} registrada${meds.length===1?'':'s'}</div>
     ${sorted.map(m=>{
       const next = nextMedDue(m);
@@ -1287,12 +1440,12 @@ async function markSingleMedDone(petId, medId){
 }
 
 /* ---- Vacunas tab ---- */
-function tabVacunas(pet){
+function tabVacunas(pet, embedded){
   const vax = STATE.petData[pet.id].vaccines||[];
-  if(vax.length===0) return `<div class="section-title">Vacunas</div><div class="empty-state"><div class="e">💉</div><p>Todavía no registraste vacunas.<br>Tocá el botón + para agregar una.</p></div>`;
+  if(vax.length===0) return `${embedded?'':'<div class="section-title">Vacunas</div>'}<div class="empty-state"><div class="e">💉</div><p>Todavía no registraste vacunas.<br>Tocá "+ Agregar vacuna" para cargar una.</p></div>`;
   const sorted = [...vax].sort((a,b)=> (b.dateApplied||'').localeCompare(a.dateApplied||''));
   return `
-    <div class="section-title">Vacunas</div>
+    ${embedded?'':'<div class="section-title">Vacunas</div>'}
     <div class="section-hint">${vax.length} en el historial</div>
     ${sorted.map(v=>`
       <div class="stamp-card">
@@ -1310,13 +1463,13 @@ function tabVacunas(pet){
 }
 
 /* ---- Consultas tab ---- */
-function tabConsultas(pet){
+function tabConsultas(pet, embedded){
   const list = STATE.petData[pet.id].consultas||[];
-  if(list.length===0) return `<div class="section-title">Consultas</div><div class="empty-state"><div class="e">🩺</div><p>Todavía no cargaste consultas.<br>Tocá el botón + para agregar la próxima.</p></div>`;
+  if(list.length===0) return `${embedded?'':'<div class="section-title">Consultas</div>'}<div class="empty-state"><div class="e">🩺</div><p>Todavía no cargaste consultas.<br>Tocá "+ Agregar consulta" para cargar la próxima.</p></div>`;
   const sorted = [...list].sort((a,b)=> (a.fecha||'').localeCompare(b.fecha||''));
   const today = todayISO();
   return `
-    <div class="section-title">Consultas</div>
+    ${embedded?'':'<div class="section-title">Consultas</div>'}
     <div class="section-hint">${list.length} registrada${list.length===1?'':'s'}</div>
     ${sorted.map(c=>{
       const diff = c.fecha ? daysBetween(today,c.fecha) : null;
@@ -1340,16 +1493,16 @@ function tabConsultas(pet){
 }
 
 /* ---- Peso tab ---- */
-function tabPeso(pet){
+function tabPeso(pet, embedded){
   const w = [...(STATE.petData[pet.id].weights||[])].sort((a,b)=>a.date.localeCompare(b.date));
-  if(w.length===0) return `<div class="section-title">Peso</div><div class="empty-state"><div class="e">⚖️</div><p>Todavía no cargaste pesadas.<br>Tocá el botón + para registrar una.</p></div>`;
+  if(w.length===0) return `${embedded?'':'<div class="section-title">Peso</div>'}<div class="empty-state"><div class="e">⚖️</div><p>Todavía no cargaste pesadas.<br>Tocá "+ Registrar peso" para cargar una.</p></div>`;
   const last = w[w.length-1];
   const prev = w.length>1 ? w[w.length-2] : null;
   const delta = prev ? (last.value-prev.value) : null;
   const spark = sparklineSVG(w);
   const reversed = [...w].reverse();
   return `
-    <div class="section-title">Peso</div>
+    ${embedded?'':'<div class="section-title">Peso</div>'}
     <div class="weight-current">
       <div>
         <div class="big">${last.value}${last.unit}</div>
@@ -1387,11 +1540,11 @@ function sparklineSVG(w){
 }
 
 /* ---- Notas tab ---- */
-function tabNotas(pet){
+function tabNotas(pet, embedded){
   const notes = [...(STATE.petData[pet.id].notes||[])].sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
-  if(notes.length===0) return `<div class="section-title">Notas</div><div class="empty-state"><div class="e">📝</div><p>Todavía no hay notas.<br>Tocá el botón + para anotar algo.</p></div>`;
+  if(notes.length===0) return `${embedded?'':'<div class="section-title">Notas</div>'}<div class="empty-state"><div class="e">📝</div><p>Todavía no hay notas.<br>Tocá "+ Agregar nota" para anotar algo.</p></div>`;
   return `
-    <div class="section-title">Notas</div>
+    ${embedded?'':'<div class="section-title">Notas</div>'}
     ${notes.map(n=>`
       <div class="note-card">
         <p>${escapeHtml(n.text)}</p>
@@ -1402,18 +1555,61 @@ function tabNotas(pet){
   `;
 }
 
+/* ---- Accordion sections inside Perfil ---- */
+function toggleSection(id){ STATE.expandedSections[id] = !STATE.expandedSections[id]; render(); }
+
+function accordionItemHtml(pet, id, icon, label){
+  const isOpen = !!STATE.expandedSections[id];
+  return `
+    <div class="profile-nav-item ${isOpen?'open':''}" onclick="toggleSection('${id}')">
+      <span class="pnav-label">${icon} ${label}</span>
+      <span class="pnav-chevron">${isOpen?'▲':'▼'}</span>
+    </div>
+    ${isOpen ? `<div class="profile-nav-content">${accordionContentHtml(pet,id)}</div>` : ''}
+  `;
+}
+
+function accordionContentHtml(pet, id){
+  const addMap = {
+    medicacion:{type:'med', label:'+ Agregar medicación'},
+    vacunas:{type:'vaccine', label:'+ Agregar vacuna'},
+    consultas:{type:'consulta', label:'+ Agregar consulta'},
+    peso:{type:'weight', label:'+ Registrar peso'},
+    notas:{type:'note', label:'+ Agregar nota'}
+  };
+  const add = addMap[id];
+  let body = '';
+  if(id==='calendario') body = tabCalendario(pet, true);
+  else if(id==='medicacion') body = tabMedicacion(pet, true);
+  else if(id==='vacunas') body = tabVacunas(pet, true);
+  else if(id==='consultas') body = tabConsultas(pet, true);
+  else if(id==='peso') body = tabPeso(pet, true);
+  else if(id==='notas') body = tabNotas(pet, true);
+  return `
+    ${add ? `<button class="mini-btn" style="margin-bottom:14px;" onclick="openModal('${add.type}')">${add.label}</button>` : ''}
+    ${body}
+  `;
+}
+
 /* ---- Perfil tab ---- */
 function tabPerfil(pet){
   const sexLabel = {macho:'Macho',hembra:'Hembra',nose:'No especificado'}[pet.sex];
   const neutLabel = {si:'Sí',no:'No',nose:'No sé'}[pet.neutered];
+  const photos = (STATE.petData[pet.id].photos)||[];
+  const showNeutered = pet.species !== 'pez';
   return `
-    <div class="profile-avatar">${pet.emoji}</div>
+    <div class="profile-avatar">${avatarHtml(pet)}</div>
+    <div style="text-align:center;margin:-4px 0 10px;">
+      <button class="mini-btn" onclick="triggerProfilePhotoUpload('${pet.id}')">📷 Cambiar foto de perfil</button>
+      ${pet.avatarType==='photo' ? `<button class="mini-btn ghost" onclick="useEmojiAvatar('${pet.id}')">Usar ícono</button>` : ''}
+    </div>
+    <input type="file" id="profile-photo-input-${pet.id}" accept="image/*" style="display:none" onchange="handleProfilePhotoUpload(event,'${pet.id}')">
     <div class="section-title" style="text-align:center;">${escapeHtml(pet.name)}</div>
     <div class="section-hint" style="text-align:center;">${speciesInfo(pet.species).label}</div>
     <div style="margin-top:10px;">
       <div class="profile-row"><span class="k">Raza</span><span class="v">${escapeHtml(pet.breed)||'—'}</span></div>
       <div class="profile-row"><span class="k">Sexo</span><span class="v">${sexLabel}</span></div>
-      <div class="profile-row"><span class="k">Esterilizado/a</span><span class="v">${neutLabel}</span></div>
+      ${showNeutered ? `<div class="profile-row"><span class="k">Esterilizado/a</span><span class="v">${neutLabel}</span></div>` : ''}
       <div class="profile-row"><span class="k">Edad</span><span class="v">${petAge(pet)}</span></div>
       <div class="profile-row"><span class="k">Nacimiento</span><span class="v">${pet.birthMode==='estimate'?'Estimado':fmtDate(pet.birthDate)}</span></div>
       <div class="profile-row"><span class="k">Ficha creada</span><span class="v">${fmtDate(pet.createdAt)}</span></div>
@@ -1423,10 +1619,64 @@ function tabPerfil(pet){
       <textarea id="allergy-input" placeholder="Ej: penicilina, pollo, picadura de pulga…" oninput="STATE._allergyDraft='${pet.id}'" onblur="saveAllergies('${pet.id}', this.value)">${escapeHtml(pet.allergies||'')}</textarea>
       <div class="allergy-warn" style="color:rgba(19,36,32,0.5);margin-top:6px;">Se guarda automáticamente al salir del campo.</div>
     </div>
-    <button class="btn-primary" style="margin-top:6px;" onclick="printSummary('${pet.id}')">🖨️ Generar resumen para compartir</button>
+
+    <div class="section-title" style="margin-top:26px;font-size:18px;">Secciones</div>
+    <div class="section-hint">Tocá una sección para desplegarla acá mismo.</div>
+    <div class="profile-nav">
+      <div class="profile-nav-item active" style="cursor:default;">
+        <span class="pnav-label">🪪 Perfil</span>
+      </div>
+      ${DASHBOARD_TABS.filter(([id])=>id!=='perfil').map(([id,icon,label])=>accordionItemHtml(pet,id,icon,label)).join('')}
+    </div>
+
+    <div class="section-title" style="margin-top:26px;font-size:18px;">Fotos guardadas</div>
+    <div class="section-hint">Guardá varias fotos por si tu mascota se pierde y las necesitás para un cartel o para mostrarlas.</div>
+    <div class="photo-gallery">
+      ${photos.map(p=>`
+        <div class="photo-thumb">
+          <img src="${p.dataUrl}" alt="">
+          <button class="photo-remove" onclick="deletePhoto('${pet.id}','${p.id}')">✕</button>
+        </div>`).join('')}
+      <button class="photo-add-btn" onclick="triggerGalleryUpload('${pet.id}')">＋</button>
+    </div>
+    <input type="file" id="gallery-photo-input-${pet.id}" accept="image/*" style="display:none" onchange="handleGalleryUpload(event,'${pet.id}')">
+
+    <button class="btn-primary" style="margin-top:22px;" onclick="printSummary('${pet.id}')">🖨️ Generar resumen para compartir</button>
     <button class="btn-secondary" onclick="goShareSheet('${pet.id}')">📋 Compartir info de ${escapeHtml(pet.name)}</button>
     <button class="btn-secondary btn-danger" onclick="deletePet('${pet.id}')">Eliminar mascota</button>
   `;
+}
+
+function triggerProfilePhotoUpload(petId){ document.getElementById('profile-photo-input-'+petId).click(); }
+async function handleProfilePhotoUpload(evt, petId){
+  const file = evt.target.files[0]; if(!file) return;
+  try{
+    const dataUrl = await compressImageFile(file, 640, 0.75);
+    const pet = STATE.pets.find(p=>p.id===petId);
+    pet.photo = dataUrl; pet.avatarType = 'photo';
+    await savePets(); render();
+  }catch(e){ alert('No se pudo procesar la imagen. Probá con otra foto.'); }
+  evt.target.value = '';
+}
+async function useEmojiAvatar(petId){
+  const pet = STATE.pets.find(p=>p.id===petId);
+  pet.avatarType = 'emoji';
+  await savePets(); render();
+}
+function triggerGalleryUpload(petId){ document.getElementById('gallery-photo-input-'+petId).click(); }
+async function handleGalleryUpload(evt, petId){
+  const file = evt.target.files[0]; if(!file) return;
+  try{
+    const dataUrl = await compressImageFile(file, 800, 0.75);
+    STATE.petData[petId].photos = STATE.petData[petId].photos || [];
+    STATE.petData[petId].photos.push({id:uid(), dataUrl, addedAt: todayISO()});
+    await savePetData(petId); render();
+  }catch(e){ alert('No se pudo procesar la imagen. Probá con otra foto.'); }
+  evt.target.value = '';
+}
+async function deletePhoto(petId, photoId){
+  STATE.petData[petId].photos = (STATE.petData[petId].photos||[]).filter(p=>p.id!==photoId);
+  await savePetData(petId); render();
 }
 
 async function saveAllergies(petId, value){
@@ -1457,8 +1707,10 @@ function printSummary(petId){
   const meds = data.meds||[], vax = data.vaccines||[], weights=[...(data.weights||[])].sort((a,b)=>a.date.localeCompare(b.date));
   const lastWeight = weights[weights.length-1];
   const area = document.getElementById('print-area');
+  const hasPhoto = pet.avatarType==='photo' && !!pet.photo;
   area.innerHTML = `
     <div style="font-family:'Fraunces',serif;">
+      ${hasPhoto ? `<img src="${pet.photo}" alt="${escapeHtml(pet.name)}" style="width:120px;height:120px;object-fit:cover;border-radius:50%;border:2px solid #1B3A34;margin-bottom:10px;">` : ''}
       <h1 style="margin-bottom:0;">${escapeHtml(pet.name)}</h1>
       <p style="font-family:'Inter',sans-serif;color:#555;margin-top:4px;">${speciesInfo(pet.species).label} ${pet.breed?'· '+escapeHtml(pet.breed):''} · ${petAge(pet)} · Generado el ${fmtDate(todayISO())}</p>
       <hr>
@@ -1478,6 +1730,97 @@ function printSummary(petId){
   setTimeout(()=>window.print(), 100);
 }
 
+/* ============================= EDIT PET MODAL ============================= */
+function openEditPet(petId){
+  const pet = STATE.pets.find(p=>p.id===petId);
+  if(!pet) return;
+  STATE.modal = {type:'editPet', draft:{
+    petId: pet.id, species: pet.species, name: pet.name, breed: pet.breed, sex: pet.sex,
+    neutered: pet.neutered, birthMode: pet.birthMode, birthDate: pet.birthDate,
+    estYears: pet.estYears, estMonths: pet.estMonths, emoji: pet.emoji,
+    photo: pet.photo, avatarType: pet.avatarType
+  }};
+  render();
+}
+function modalEditPetForm(){
+  const d = STATE.modal.draft;
+  const sp = speciesInfo(d.species);
+  return `
+    <div class="field">
+      <label>Avatar</label>
+      <div class="emoji-pick">
+        ${sp.emojis.map(e=>`<button class="${(d.avatarType!=='photo' && d.emoji===e)?'selected':''}" onclick="STATE.modal.draft.emoji='${e}';STATE.modal.draft.avatarType='emoji';render()">${e}</button>`).join('')}
+        <button class="photo-upload-btn ${d.avatarType==='photo'?'selected':''}" onclick="document.getElementById('edit-photo-input').click()" title="Subir foto">${d.photo?`<img src="${d.photo}" alt="">`:'📷'}</button>
+      </div>
+      <input type="file" id="edit-photo-input" accept="image/*" style="display:none" onchange="handleEditPetPhoto(event)">
+    </div>
+    <div class="field"><label>Nombre</label><input type="text" value="${escapeHtml(d.name||'')}" oninput="STATE.modal.draft.name=this.value"></div>
+    <div class="field"><label>Raza (opcional)</label><input type="text" value="${escapeHtml(d.breed||'')}" oninput="STATE.modal.draft.breed=this.value"></div>
+    <div class="field">
+      <label>Sexo</label>
+      <div class="pill-row">
+        <button class="pill ${d.sex==='macho'?'selected':''}" onclick="STATE.modal.draft.sex='macho';render()">Macho</button>
+        <button class="pill ${d.sex==='hembra'?'selected':''}" onclick="STATE.modal.draft.sex='hembra';render()">Hembra</button>
+        <button class="pill ${d.sex==='nose'?'selected':''}" onclick="STATE.modal.draft.sex='nose';render()">No sé</button>
+      </div>
+    </div>
+    ${d.species!=='pez' ? `
+    <div class="field">
+      <label>Esterilizado/a</label>
+      <div class="pill-row">
+        <button class="pill ${d.neutered==='si'?'selected':''}" onclick="STATE.modal.draft.neutered='si';render()">Sí</button>
+        <button class="pill ${d.neutered==='no'?'selected':''}" onclick="STATE.modal.draft.neutered='no';render()">No</button>
+        <button class="pill ${d.neutered==='nose'?'selected':''}" onclick="STATE.modal.draft.neutered='nose';render()">No sé</button>
+      </div>
+    </div>` : ''}
+    <div class="field">
+      <label>Fecha de nacimiento</label>
+      <div class="pill-row" style="margin-bottom:10px;">
+        <button class="pill ${d.birthMode==='exact'?'selected':''}" onclick="STATE.modal.draft.birthMode='exact';render()">Fecha exacta</button>
+        <button class="pill ${d.birthMode==='estimate'?'selected':''}" onclick="STATE.modal.draft.birthMode='estimate';render()">Edad aproximada</button>
+      </div>
+      ${d.birthMode==='estimate' ? `
+        <div style="display:flex;gap:10px;">
+          <input type="number" min="0" placeholder="Años" style="width:50%;padding:12px;border:1.5px solid var(--line);border-radius:10px;" value="${d.estYears||''}" oninput="STATE.modal.draft.estYears=parseInt(this.value||0)">
+          <input type="number" min="0" max="11" placeholder="Meses" style="width:50%;padding:12px;border:1.5px solid var(--line);border-radius:10px;" value="${d.estMonths||''}" oninput="STATE.modal.draft.estMonths=parseInt(this.value||0)">
+        </div>
+      ` : `
+        <input type="date" value="${d.birthDate||''}" max="${todayISO()}" oninput="STATE.modal.draft.birthDate=this.value">
+      `}
+    </div>
+    <button class="btn-primary" onclick="saveEditPetModal()">Guardar cambios</button>
+  `;
+}
+async function handleEditPetPhoto(evt){
+  const file = evt.target.files[0]; if(!file) return;
+  try{
+    const dataUrl = await compressImageFile(file, 640, 0.75);
+    STATE.modal.draft.photo = dataUrl;
+    STATE.modal.draft.avatarType = 'photo';
+    render();
+  }catch(e){ alert('No se pudo procesar la imagen. Probá con otra foto.'); }
+  evt.target.value = '';
+}
+async function saveEditPetModal(){
+  const d = STATE.modal.draft;
+  if(!d.name || !d.name.trim()){ alert('Poné un nombre para continuar.'); return; }
+  const pet = STATE.pets.find(p=>p.id===d.petId);
+  if(!pet) return;
+  pet.name = d.name.trim();
+  pet.breed = d.breed||'';
+  pet.sex = d.sex||'nose';
+  pet.neutered = pet.species==='pez' ? '' : (d.neutered||'nose');
+  pet.birthMode = d.birthMode||'exact';
+  pet.birthDate = d.birthDate||'';
+  pet.estYears = d.estYears||0;
+  pet.estMonths = d.estMonths||0;
+  pet.emoji = d.emoji||pet.emoji;
+  pet.photo = d.photo||'';
+  pet.avatarType = d.avatarType||'emoji';
+  await savePets();
+  closeModal();
+}
+
 /* ============================= MODALS (add entries) ============================= */
 function openModal(type){ STATE.modal = {type, draft:{}}; render(); }
 function closeModal(){ STATE.modal=null; render(); }
@@ -1492,6 +1835,7 @@ function renderModal(){
   if(t==='consulta'){ title='Agregar consulta'; body=modalAppointmentForm(); }
   if(t==='weight'){ title='Registrar peso'; body=modalWeightForm(); }
   if(t==='note'){ title='Agregar nota'; body=modalNoteForm(); }
+  if(t==='editPet'){ title='Editar información'; body=modalEditPetForm(); }
   c.innerHTML = `
     <div class="overlay" onclick="if(event.target===this)closeModal()">
       <div class="modal">
