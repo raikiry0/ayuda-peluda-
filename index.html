@@ -547,6 +547,17 @@
   .share-btn.wa:active{background:var(--whatsapp-dark);}
   .share-btn.copy{background:var(--pine);color:var(--paper);}
   .share-btn.print{background:none;border:1.5px solid var(--line);color:var(--pine-dark);}
+  .promo-link{
+    display:block;text-align:center;margin-top:16px;font-size:12.5px;
+    color:var(--pine);font-weight:600;text-decoration:underline;
+  }
+  .photo-thumb.poster-pick{cursor:pointer;}
+  .photo-thumb.poster-pick.selected{outline:3px solid var(--pine);outline-offset:-3px;}
+  .poster-pick-check{
+    position:absolute;top:6px;left:6px;width:24px;height:24px;border-radius:50%;
+    background:var(--pine);color:#fff;font-size:13px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;
+  }
 </style>
 </head>
 <body>
@@ -560,6 +571,9 @@
 
 <script>
 /* ============================= DATA / STATE ============================= */
+const PROMO_LINK = 'https://raikiry0.github.io/ayuda-peluda-/';
+const PROMO_TEXT = '🐾 ¿Querés una agenda para tu mascota? Creá la tuya gratis: ' + PROMO_LINK;
+
 const SPECIES = [
   {id:'perro', label:'Perro', emojis:['🐶','🐕','🦮','🐩']},
   {id:'gato', label:'Gato', emojis:['🐱','🐈','🐈‍⬛']},
@@ -603,6 +617,11 @@ let STATE = {
   pendingSpecies: null,
   modal: null,        // {type:'med'|'vaccine'|'weight'|'note', editId?}
   loading: true,
+  ownerContact: {name:'', phone:''},
+  posterMode: null,   // 'adoption' | 'lost'
+  posterStage: 'edit', // 'edit' | 'preview'
+  posterDraft: null,
+  posterImageDataUrl: null,
 };
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
@@ -634,6 +653,10 @@ async function loadAll(){
     if(!pd.notes) pd.notes=[];
     if(!pd.photos) pd.photos=[];
   }
+  try{
+    const oc = await window.storage.get('owner-contact', false);
+    STATE.ownerContact = oc ? JSON.parse(oc.value) : {name:'', phone:''};
+  }catch(e){ STATE.ownerContact = {name:'', phone:''}; }
   STATE.loading = false;
   render();
 }
@@ -644,6 +667,11 @@ async function savePets(){
 async function savePetData(petId){
   try{ await window.storage.set('pet-data:'+petId, JSON.stringify(STATE.petData[petId]), false); }
   catch(e){ console.error('Error guardando datos de mascota', e); }
+}
+async function saveOwnerContact(name, phone){
+  STATE.ownerContact = {name: name||'', phone: phone||''};
+  try{ await window.storage.set('owner-contact', JSON.stringify(STATE.ownerContact), false); }
+  catch(e){ console.error('Error guardando datos de contacto', e); }
 }
 
 /* ============================= DERIVED HELPERS ============================= */
@@ -853,6 +881,17 @@ function renderTopbar(){
       </div>`;
     return;
   }
+  if(STATE.view==='poster'){
+    const isLost = STATE.posterMode==='lost';
+    el.innerHTML = `
+      <div class="topbar">
+        <div class="topbar-row">
+          <button class="back-btn" onclick="backFromPoster()">←</button>
+          <div class="brand" style="font-size:18px;">${isLost?'Cartel de "Se busca"':'Cartel de adopción'}</div>
+        </div>
+      </div>`;
+    return;
+  }
   if(STATE.view==='dashboard'){
     const pet = STATE.pets.find(p=>p.id===STATE.activePetId);
     if(!pet){ el.innerHTML=''; return; }
@@ -892,6 +931,7 @@ function renderContent(){
   if(STATE.view==='addPetForm') return el.innerHTML = viewAddPetForm();
   if(STATE.view==='learn') return el.innerHTML = viewLearn();
   if(STATE.view==='share') return el.innerHTML = viewShareSheet();
+  if(STATE.view==='poster') return el.innerHTML = STATE.posterStage==='preview' ? viewPosterPreview() : viewPosterEdit();
   if(STATE.view==='dashboard') return el.innerHTML = viewDashboard();
   if(STATE.view==='print') return el.innerHTML = '';
 }
@@ -1239,6 +1279,7 @@ function viewShareSheet(){
       <button class="share-btn copy" onclick="copyShareText('${pet.id}')">📋 Copiar texto</button>
       <button class="share-btn print" onclick="printSummary('${pet.id}')">🖨️ Imprimir / guardar como PDF</button>
     </div>
+    <a href="${PROMO_LINK}" target="_blank" rel="noopener" class="promo-link">🐾 ¿Querés una agenda para tu mascota? Hacé click acá</a>
   `;
 }
 
@@ -1271,6 +1312,8 @@ function buildShareText(pet){
   lines.push(`⚖️ Último peso: ${lastWeight ? lastWeight.value+lastWeight.unit+' ('+fmtDate(lastWeight.date)+')' : 'sin registros'}`);
   lines.push('');
   lines.push('Generado con Huellas 🐾');
+  lines.push('');
+  lines.push(PROMO_TEXT);
   return lines.join('\n');
 }
 
@@ -1304,6 +1347,361 @@ async function copyShareText(petId){
   }catch(e){
     alert('No se pudo copiar automáticamente. Elegí y copiá el texto manualmente si hace falta.');
   }
+}
+
+/* ============================= POSTERS: ADOPCIÓN / SE BUSCA ============================= */
+function openPoster(petId, mode){
+  const pet = STATE.pets.find(p=>p.id===petId);
+  if(!pet) return;
+  const galleryPhotos = (STATE.petData[petId].photos||[]).map(p=>p.dataUrl);
+  const profilePhoto = (pet.avatarType==='photo' && pet.photo) ? pet.photo : '';
+  const availablePhotos = [...new Set([profilePhoto, ...galleryPhotos].filter(Boolean))];
+  const sexLabel = {macho:'Macho', hembra:'Hembra', nose:''}[pet.sex] || '';
+
+  STATE.posterMode = mode;
+  STATE.posterStage = 'edit';
+  STATE.posterImageDataUrl = null;
+  STATE.posterDraft = {
+    petId,
+    availablePhotos,
+    selectedPhotos: profilePhoto ? [profilePhoto] : (availablePhotos[0] ? [availablePhotos[0]] : []),
+    name: pet.name,
+    speciesBreed: speciesInfo(pet.species).label + (pet.breed ? ' · '+pet.breed : ''),
+    sexoEdad: (sexLabel ? sexLabel+' · ' : '') + petAge(pet),
+    lastSeenPlace: '', lastSeenDate: todayISO(), distinguishingMarks: '',
+    temperament: '', adoptionRequirements: '',
+    extraInfo: '',
+    ownerName: STATE.ownerContact.name || '',
+    ownerPhone: STATE.ownerContact.phone || ''
+  };
+  STATE.view = 'poster';
+  render();
+}
+
+function backFromPoster(){
+  if(STATE.posterStage==='preview'){ STATE.posterStage='edit'; render(); return; }
+  STATE.view='dashboard'; STATE.tab='perfil'; render();
+}
+
+function togglePosterPhotoIndex(idx){
+  const d = STATE.posterDraft;
+  const url = d.availablePhotos[idx];
+  const pos = d.selectedPhotos.indexOf(url);
+  if(pos>=0){ d.selectedPhotos.splice(pos,1); }
+  else{
+    if(d.selectedPhotos.length>=3){ alert('Podés elegir hasta 3 fotos para el cartel.'); return; }
+    d.selectedPhotos.push(url);
+  }
+  render();
+}
+function triggerPosterPhotoUpload(){ document.getElementById('poster-photo-input').click(); }
+async function handlePosterPhotoUpload(evt){
+  const file = evt.target.files[0]; if(!file) return;
+  try{
+    const dataUrl = await compressImageFile(file, 800, 0.78);
+    const petId = STATE.posterDraft.petId;
+    STATE.petData[petId].photos = STATE.petData[petId].photos || [];
+    STATE.petData[petId].photos.push({id:uid(), dataUrl, addedAt: todayISO()});
+    await savePetData(petId);
+    STATE.posterDraft.availablePhotos.push(dataUrl);
+    if(STATE.posterDraft.selectedPhotos.length<3) STATE.posterDraft.selectedPhotos.push(dataUrl);
+    render();
+  }catch(e){ alert('No se pudo procesar la imagen. Probá con otra foto.'); }
+  evt.target.value = '';
+}
+
+function viewPosterEdit(){
+  const d = STATE.posterDraft;
+  const isLost = STATE.posterMode==='lost';
+  return `
+    <div class="section-title">${isLost?'Cartel de "Se busca"':'Cartel de adopción'}</div>
+    <div class="section-hint">Se completó con los datos del perfil — revisá y editá lo que haga falta antes de generar la imagen.</div>
+
+    <div class="field">
+      <label>Fotos (elegí hasta 3)</label>
+      <div class="photo-gallery">
+        ${d.availablePhotos.map((url,i)=>`
+          <div class="photo-thumb poster-pick ${d.selectedPhotos.includes(url)?'selected':''}" onclick="togglePosterPhotoIndex(${i})">
+            <img src="${url}" alt="">
+            ${d.selectedPhotos.includes(url)?'<div class="poster-pick-check">✓</div>':''}
+          </div>`).join('')}
+        <button class="photo-add-btn" onclick="triggerPosterPhotoUpload()">＋</button>
+      </div>
+      <input type="file" id="poster-photo-input" accept="image/*" style="display:none" onchange="handlePosterPhotoUpload(event)">
+    </div>
+
+    <div class="field"><label>Nombre</label><input type="text" value="${escapeHtml(d.name)}" oninput="STATE.posterDraft.name=this.value"></div>
+    <div class="field"><label>Especie / raza</label><input type="text" value="${escapeHtml(d.speciesBreed)}" oninput="STATE.posterDraft.speciesBreed=this.value"></div>
+    <div class="field"><label>Sexo / edad</label><input type="text" value="${escapeHtml(d.sexoEdad)}" oninput="STATE.posterDraft.sexoEdad=this.value"></div>
+
+    ${isLost ? `
+      <div class="wa-row">
+        <div class="field"><label>Última vez visto (lugar)</label><input type="text" placeholder="Ej: Plaza San Martín" value="${escapeHtml(d.lastSeenPlace)}" oninput="STATE.posterDraft.lastSeenPlace=this.value"></div>
+        <div class="field"><label>Fecha</label><input type="date" value="${d.lastSeenDate}" oninput="STATE.posterDraft.lastSeenDate=this.value"></div>
+      </div>
+      <div class="field"><label>Señas particulares</label><textarea maxlength="160" placeholder="Ej: collar rojo, mancha en la oreja izquierda…" oninput="STATE.posterDraft.distinguishingMarks=this.value">${escapeHtml(d.distinguishingMarks)}</textarea></div>
+    ` : `
+      <div class="field"><label>Temperamento</label><textarea maxlength="160" placeholder="Ej: cariñoso, juguetón, bueno con niños…" oninput="STATE.posterDraft.temperament=this.value">${escapeHtml(d.temperament)}</textarea></div>
+      <div class="field"><label>Requisitos para adoptar</label><textarea maxlength="160" placeholder="Ej: casa con patio, compromiso de esterilización…" oninput="STATE.posterDraft.adoptionRequirements=this.value">${escapeHtml(d.adoptionRequirements)}</textarea></div>
+    `}
+
+    <div class="field"><label>Información adicional (opcional)</label><textarea maxlength="160" placeholder="${isLost?'Ej: se ofrece recompensa…':'Ej: ya está vacunado y esterilizado…'}" oninput="STATE.posterDraft.extraInfo=this.value">${escapeHtml(d.extraInfo)}</textarea></div>
+
+    <div class="field"><label>Tu nombre</label><input type="text" value="${escapeHtml(d.ownerName)}" oninput="STATE.posterDraft.ownerName=this.value"></div>
+    <div class="field"><label>Tu número de contacto</label><input type="text" placeholder="Ej: 291 400-1234" value="${escapeHtml(d.ownerPhone)}" oninput="STATE.posterDraft.ownerPhone=this.value"></div>
+    <div class="section-hint" style="margin-top:-8px;">Guardamos tu nombre y número para que no tengas que escribirlos de nuevo la próxima vez.</div>
+
+    <button class="btn-primary" style="margin-top:8px;" onclick="generatePoster()">🖼️ Generar cartel</button>
+    <button class="btn-secondary" onclick="backFromPoster()">Cancelar</button>
+  `;
+}
+
+async function generatePoster(){
+  const d = STATE.posterDraft;
+  if(!d.ownerName.trim() || !d.ownerPhone.trim()){
+    alert('Completá tu nombre y número de contacto para que puedan comunicarse con vos.');
+    return;
+  }
+  if(d.selectedPhotos.length===0){
+    if(!confirm('No elegiste ninguna foto. ¿Generar el cartel igual, sin foto?')) return;
+  }
+  await saveOwnerContact(d.ownerName.trim(), d.ownerPhone.trim());
+  try{
+    const dataUrl = await renderPosterCanvas(d, STATE.posterMode);
+    STATE.posterImageDataUrl = dataUrl;
+    STATE.posterStage = 'preview';
+    render();
+  }catch(e){
+    console.error(e);
+    alert('No se pudo generar el cartel. Probá de nuevo.');
+  }
+}
+
+function viewPosterPreview(){
+  const pet = STATE.pets.find(p=>p.id===STATE.posterDraft.petId);
+  const isLost = STATE.posterMode==='lost';
+  return `
+    <div class="section-title">${isLost?'Tu cartel de "Se busca"':'Tu cartel de adopción'}</div>
+    <div class="section-hint">Listo${pet?', '+escapeHtml(pet.name):''}. Podés descargarlo o compartirlo directamente.</div>
+    <img src="${STATE.posterImageDataUrl}" alt="Cartel" style="width:100%;border-radius:16px;border:1px solid var(--line);margin-bottom:16px;display:block;">
+    <div class="share-actions">
+      <button class="share-btn wa" onclick="sharePosterImage()">📲 Compartir</button>
+      <button class="share-btn copy" onclick="downloadPoster()">⬇️ Descargar imagen</button>
+      <button class="share-btn print" onclick="STATE.posterStage='edit';render()">✏️ Editar de nuevo</button>
+    </div>
+  `;
+}
+
+function downloadPoster(){
+  const pet = STATE.pets.find(p=>p.id===STATE.posterDraft.petId);
+  const a = document.createElement('a');
+  a.href = STATE.posterImageDataUrl;
+  a.download = 'cartel-'+((pet?pet.name:'mascota')||'mascota').replace(/[^a-z0-9]/gi,'_')+'.png';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+async function sharePosterImage(){
+  const pet = STATE.pets.find(p=>p.id===STATE.posterDraft.petId);
+  try{
+    const res = await fetch(STATE.posterImageDataUrl);
+    const blob = await res.blob();
+    const file = new File([blob], 'cartel-'+((pet?pet.name:'mascota')||'mascota').replace(/[^a-z0-9]/gi,'_')+'.png', {type:'image/png'});
+    if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title: STATE.posterMode==='lost' ? 'Se busca' : 'En adopción'});
+      return;
+    }
+  }catch(e){ /* el usuario canceló o el navegador no soporta compartir archivos */ }
+  downloadPoster();
+}
+
+/* ---- Canvas drawing helpers ---- */
+function loadImageEl(src){
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('No se pudo cargar la imagen'));
+    img.src = src;
+  });
+}
+function drawRoundedRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+function drawCoverImage(ctx,img,x,y,w,h){
+  const ir = img.width/img.height, tr = w/h;
+  let sx,sy,sw,sh;
+  if(ir>tr){ sh=img.height; sw=sh*tr; sx=(img.width-sw)/2; sy=0; }
+  else{ sw=img.width; sh=sw/tr; sx=0; sy=(img.height-sh)/2; }
+  ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+}
+function wrapTextLines(ctx, text, maxWidth, maxLines){
+  const words = (text||'').split(/\s+/).filter(Boolean);
+  const lines = [];
+  let line = '';
+  for(const w of words){
+    const test = line ? line+' '+w : w;
+    if(ctx.measureText(test).width > maxWidth && line){
+      lines.push(line);
+      if(lines.length===maxLines) { line=''; break; }
+      line = w;
+    } else line = test;
+  }
+  if(line && lines.length<maxLines) lines.push(line);
+  if(lines.length===maxLines){
+    const words2 = (text||'').split(/\s+/).filter(Boolean);
+    if(words2.join(' ').length > lines.join(' ').length){
+      lines[maxLines-1] = lines[maxLines-1].replace(/\s*\S*$/,'').trim() + '…';
+    }
+  }
+  return lines;
+}
+
+async function renderPosterCanvas(d, mode){
+  const W = 1080, H = 2000;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  const isLost = mode==='lost';
+  const bandColor = isLost ? '#FF6B5B' : '#F2C14E';
+  const bandColorDark = isLost ? '#E14A3A' : '#D9A62E';
+  const bg = '#FFFBF2', ink = '#132420', pine = '#1B3A34';
+
+  ctx.fillStyle = bg;
+  ctx.fillRect(0,0,W,H);
+
+  const bandH = 190;
+  const grad = ctx.createLinearGradient(0,0,W,0);
+  grad.addColorStop(0, bandColor);
+  grad.addColorStop(1, bandColorDark);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,W,bandH);
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'center';
+  ctx.font = "800 82px Georgia, 'Times New Roman', serif";
+  ctx.fillText(isLost ? 'SE BUSCA' : 'EN ADOPCIÓN', W/2, 118);
+  ctx.font = "600 26px Arial, sans-serif";
+  ctx.fillText(isLost ? 'Ayudanos a encontrarlo/a 🐾' : 'Buscando un hogar con amor 🐾', W/2, 162);
+
+  let cursorY = bandH + 36;
+
+  const photos = (d.selectedPhotos||[]).slice(0,3);
+  if(photos.length>0){
+    const mainSize = 460;
+    const mainX = W/2 - mainSize/2;
+    try{
+      const img = await loadImageEl(photos[0]);
+      ctx.save();
+      drawRoundedRect(ctx, mainX, cursorY, mainSize, mainSize, 26);
+      ctx.clip();
+      drawCoverImage(ctx, img, mainX, cursorY, mainSize, mainSize);
+      ctx.restore();
+      ctx.lineWidth = 6; ctx.strokeStyle = bandColor;
+      drawRoundedRect(ctx, mainX, cursorY, mainSize, mainSize, 26);
+      ctx.stroke();
+    }catch(e){}
+    cursorY += mainSize + 22;
+
+    if(photos.length>1){
+      const rest = photos.slice(1);
+      const smallSize = 160, gap = 18;
+      const totalRowW = rest.length*smallSize + (rest.length-1)*gap;
+      let sx = W/2 - totalRowW/2;
+      for(const p of rest){
+        try{
+          const img2 = await loadImageEl(p);
+          ctx.save();
+          drawRoundedRect(ctx, sx, cursorY, smallSize, smallSize, 16);
+          ctx.clip();
+          drawCoverImage(ctx, img2, sx, cursorY, smallSize, smallSize);
+          ctx.restore();
+        }catch(e){}
+        sx += smallSize + gap;
+      }
+      cursorY += 160 + 26;
+    }
+  } else {
+    ctx.fillStyle = '#EFE6D0';
+    drawRoundedRect(ctx, W/2-260, cursorY, 520, 260, 24);
+    ctx.fill();
+    ctx.fillStyle = pine;
+    ctx.font = "90px Arial";
+    ctx.textAlign = 'center';
+    ctx.fillText('🐾', W/2, cursorY+165);
+    cursorY += 290;
+  }
+
+  ctx.fillStyle = pine;
+  ctx.textAlign = 'center';
+  ctx.font = "800 56px Georgia, serif";
+  ctx.fillText(d.name || 'Mi mascota', W/2, cursorY+48);
+  cursorY += 66;
+
+  ctx.font = "500 29px Arial, sans-serif";
+  ctx.fillStyle = '#3B5750';
+  if(d.speciesBreed){ ctx.fillText(d.speciesBreed, W/2, cursorY+28); cursorY += 40; }
+  if(d.sexoEdad){ ctx.fillText(d.sexoEdad, W/2, cursorY+28); cursorY += 46; }
+
+  cursorY += 14;
+  ctx.textAlign = 'left';
+  const padX = 80, maxTextW = W - padX*2;
+
+  function sectionBlock(label, text){
+    if(!text) return;
+    ctx.fillStyle = bandColorDark;
+    ctx.font = "800 25px Arial, sans-serif";
+    ctx.fillText(label.toUpperCase(), padX, cursorY+28);
+    cursorY += 40;
+    ctx.fillStyle = ink;
+    const size = 28, lineHeight = 38;
+    ctx.font = size+"px Arial, sans-serif";
+    const lines = wrapTextLines(ctx, text, maxTextW, 3);
+    lines.forEach((l,i)=> ctx.fillText(l, padX, cursorY + size*0.85 + i*lineHeight));
+    cursorY += lines.length*lineHeight + 22;
+  }
+
+  if(isLost){
+    if(d.lastSeenPlace || d.lastSeenDate){
+      sectionBlock('Última vez visto', `${d.lastSeenPlace||'—'}${d.lastSeenDate?' · '+fmtDate(d.lastSeenDate):''}`);
+    }
+    sectionBlock('Señas particulares', d.distinguishingMarks);
+  }else{
+    sectionBlock('Temperamento', d.temperament);
+    sectionBlock('Requisitos para adoptar', d.adoptionRequirements);
+  }
+  sectionBlock(isLost ? '¡Se ofrece recompensa / info extra!' : 'Información adicional', d.extraInfo);
+
+  cursorY += 10;
+  const contactBoxH = 130;
+  const contactY = cursorY;
+  ctx.fillStyle = pine;
+  drawRoundedRect(ctx, padX, contactY, maxTextW, contactBoxH, 20);
+  ctx.fill();
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'center';
+  ctx.font = "700 29px Arial, sans-serif";
+  ctx.fillText('📞 Contactar a ' + (d.ownerName||''), W/2, contactY+50);
+  ctx.font = "800 36px Arial, sans-serif";
+  ctx.fillText(d.ownerPhone||'', W/2, contactY+96);
+
+  const footerY = contactY + contactBoxH + 46;
+  ctx.fillStyle = '#8A8272';
+  ctx.font = "19px Arial, sans-serif";
+  ctx.textAlign = 'center';
+  ctx.fillText(PROMO_TEXT, W/2, footerY);
+
+  const finalHeight = Math.min(H, footerY + 24);
+  const trimmed = document.createElement('canvas');
+  trimmed.width = W; trimmed.height = finalHeight;
+  trimmed.getContext('2d').drawImage(canvas, 0, 0, W, finalHeight, 0, 0, W, finalHeight);
+  return trimmed.toDataURL('image/png');
 }
 
 
@@ -1643,6 +2041,8 @@ function tabPerfil(pet){
 
     <button class="btn-primary" style="margin-top:22px;" onclick="printSummary('${pet.id}')">🖨️ Generar resumen para compartir</button>
     <button class="btn-secondary" onclick="goShareSheet('${pet.id}')">📋 Compartir info de ${escapeHtml(pet.name)}</button>
+    <button class="btn-secondary" onclick="openPoster('${pet.id}','adoption')">🏠 Dar en adopción</button>
+    <button class="btn-secondary" onclick="openPoster('${pet.id}','lost')">🚨 Crear cartel de "Se busca"</button>
     <button class="btn-secondary btn-danger" onclick="deletePet('${pet.id}')">Eliminar mascota</button>
   `;
 }
@@ -1725,6 +2125,8 @@ function printSummary(petId){
       ${lastWeight?`<p>Último registro: ${lastWeight.value}${lastWeight.unit} (${fmtDate(lastWeight.date)})</p>`:'<p>Sin registros.</p>'}
       <h3>Notas</h3>
       ${(data.notes||[]).length===0?'<p>Sin notas.</p>':`<ul>${data.notes.map(n=>`<li>${escapeHtml(n.text)} ${n.reminderDate?'(recordatorio: '+fmtDate(n.reminderDate)+')':''}</li>`).join('')}</ul>`}
+      <hr>
+      <p style="font-size:11.5px;color:#777;">${escapeHtml(PROMO_TEXT)}</p>
     </div>
   `;
   setTimeout(()=>window.print(), 100);
