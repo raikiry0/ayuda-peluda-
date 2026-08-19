@@ -583,13 +583,15 @@ const SPECIES = [
   {id:'reptil', label:'Reptil', emojis:['🦎','🐢','🐍']},
   {id:'roedor', label:'Roedor', emojis:['🐹','🐭','🐿️']},
   {id:'caballo', label:'Caballo', emojis:['🐴','🐎']},
+  {id:'exotico', label:'Animal exótico', emojis:['🦔','🦎','🐸','🦡']},
   {id:'otro', label:'Otro', emojis:['🐾','🐾']},
 ];
 const speciesInfo = id => SPECIES.find(s=>s.id===id) || SPECIES[SPECIES.length-1];
 
 const DASHBOARD_TABS = [
   ['perfil','🪪','Perfil'],['calendario','📅','Calendario'],['medicacion','💊','Medicación'],
-  ['vacunas','💉','Vacunas'],['consultas','🩺','Consultas'],['peso','⚖️','Peso'],['notas','📝','Notas']
+  ['vacunas','💉','Vacunas'],['consultas','🩺','Consultas'],['agua','💧','Cambio de agua'],
+  ['alimentacion','🍽️','Alimentación'],['peso','⚖️','Peso'],['notas','📝','Notas']
 ];
 
 const WELLNESS_SIGNS = [
@@ -641,9 +643,9 @@ async function loadAll(){
     if(pet.photo===undefined) pet.photo='';
     try{
       const d = await window.storage.get('pet-data:'+pet.id, false);
-      STATE.petData[pet.id] = d ? JSON.parse(d.value) : {meds:[],vaccines:[],weights:[],notes:[],consultas:[],photos:[]};
+      STATE.petData[pet.id] = d ? JSON.parse(d.value) : {meds:[],vaccines:[],weights:[],notes:[],consultas:[],photos:[],waterChanges:[],feeding:[]};
     }catch(e){
-      STATE.petData[pet.id] = {meds:[],vaccines:[],weights:[],notes:[],consultas:[],photos:[]};
+      STATE.petData[pet.id] = {meds:[],vaccines:[],weights:[],notes:[],consultas:[],photos:[],waterChanges:[],feeding:[]};
     }
     const pd = STATE.petData[pet.id];
     if(!pd.consultas) pd.consultas=[];
@@ -652,6 +654,8 @@ async function loadAll(){
     if(!pd.weights) pd.weights=[];
     if(!pd.notes) pd.notes=[];
     if(!pd.photos) pd.photos=[];
+    if(!pd.waterChanges) pd.waterChanges=[];
+    if(!pd.feeding) pd.feeding=[];
   }
   try{
     const oc = await window.storage.get('owner-contact', false);
@@ -745,8 +749,11 @@ function isAlarmDue(wa){
   if(wa.repeat!=='none' ) return dt <= new Date();
   return dt <= new Date() && !wa.sent;
 }
+const KIND_COLLECTION = {med:'meds', consulta:'consultas', agua:'waterChanges', alimentacion:'feeding'};
 function waMessageFor(pet, kind, entry){
   if(kind==='med') return `Recordatorio 🐾: dale a ${pet.name} su medicación "${entry.name}"${entry.dose?' ('+entry.dose+')':''}.`;
+  if(kind==='agua') return `Recordatorio 🐾: cambiale el agua a ${pet.name}${entry.notas?' ('+entry.notas+')':''}.`;
+  if(kind==='alimentacion') return `Recordatorio 🐾: dale de comer a ${pet.name}${entry.name?' — '+entry.name:''}${entry.hora?' ('+entry.hora+')':''}.`;
   return `Recordatorio 🐾: ${pet.name} tiene consulta veterinaria${entry.motivo?' por "'+entry.motivo+'"':''} el ${fmtDate(entry.fecha)}${entry.hora?' a las '+entry.hora:''}.`;
 }
 function waLink(phone, message){
@@ -770,6 +777,8 @@ function collectDueAlarms(){
     const data = STATE.petData[pet.id]||{};
     (data.meds||[]).forEach(m=>{ if(isAlarmDue(m.whatsapp)) out.push({pet,entry:m,kind:'med',coll:'meds'}); });
     (data.consultas||[]).forEach(c=>{ if(isAlarmDue(c.whatsapp)) out.push({pet,entry:c,kind:'consulta',coll:'consultas'}); });
+    (data.waterChanges||[]).forEach(m=>{ if(isAlarmDue(m.whatsapp)) out.push({pet,entry:m,kind:'agua',coll:'waterChanges'}); });
+    (data.feeding||[]).forEach(m=>{ if(isAlarmDue(m.whatsapp)) out.push({pet,entry:m,kind:'alimentacion',coll:'feeding'}); });
   });
   return out;
 }
@@ -821,7 +830,7 @@ function waEntryStatusHtml(pet, entry, kind){
   return `
     <div class="wa-status ${due?'due':'scheduled'}">💬 ${due?'Aviso listo para enviar':'Programado '+fmtDate(wa.date)+' '+(wa.time||'')} ${wa.repeat!=='none'?' · '+REPEAT_LABELS[wa.repeat]:''}</div>
     <div>
-      <a class="wa-send-btn" href="${link}" target="_blank" rel="noopener" onclick="markAlarmSent('${pet.id}','${kind==='med'?'meds':'consultas'}','${entry.id}')">📲 Enviar por WhatsApp</a>
+      <a class="wa-send-btn" href="${link}" target="_blank" rel="noopener" onclick="markAlarmSent('${pet.id}','${KIND_COLLECTION[kind]||'meds'}','${entry.id}')">📲 Enviar por WhatsApp</a>
     </div>
   `;
 }
@@ -942,6 +951,8 @@ function renderFab(){
   const map = {medicacion:{icon:'+',type:'med',title:'Agregar medicación'},
     vacunas:{icon:'+',type:'vaccine',title:'Agregar vacuna'},
     consultas:{icon:'+',type:'consulta',title:'Agregar consulta'},
+    agua:{icon:'+',type:'agua',title:'Agregar cambio de agua'},
+    alimentacion:{icon:'+',type:'alimentacion',title:'Agregar horario'},
     peso:{icon:'+',type:'weight',title:'Registrar peso'},
     notas:{icon:'+',type:'note',title:'Agregar nota'}};
   const cfg = map[STATE.tab];
@@ -1188,7 +1199,7 @@ async function saveNewPet(){
     allergies: ''
   };
   STATE.pets.push(pet);
-  STATE.petData[pet.id] = {meds:[],vaccines:[],weights:[],notes:[],consultas:[],photos:[]};
+  STATE.petData[pet.id] = {meds:[],vaccines:[],weights:[],notes:[],consultas:[],photos:[],waterChanges:[],feeding:[]};
   await savePets();
   await savePetData(pet.id);
   STATE._newPet=null;
@@ -1712,6 +1723,8 @@ function viewDashboard(){
   if(STATE.tab==='medicacion') return tabMedicacion(pet);
   if(STATE.tab==='vacunas') return tabVacunas(pet);
   if(STATE.tab==='consultas') return tabConsultas(pet);
+  if(STATE.tab==='agua') return tabAgua(pet);
+  if(STATE.tab==='alimentacion') return tabAlimentacion(pet);
   if(STATE.tab==='peso') return tabPeso(pet);
   if(STATE.tab==='notas') return tabNotas(pet);
   if(STATE.tab==='perfil') return tabPerfil(pet);
@@ -1735,6 +1748,16 @@ function buildEventsForPet(pet){
   (data.weights||[]).forEach(w=> push(w.date,'var(--pine-light)','Peso registrado: '+w.value+w.unit));
   (data.notes||[]).forEach(n=>{ if(n.reminderDate) push(n.reminderDate,'var(--coral)','Nota: '+n.text.slice(0,30)); });
   (data.consultas||[]).forEach(c=>{ push(c.fecha,'var(--sky)','Consulta: '+(c.motivo||'veterinaria')+(c.hora?' '+c.hora:'')); });
+  (data.waterChanges||[]).forEach(m=>{
+    const n = nextMedDue(m);
+    if(n) push(n, 'var(--sky)', 'Cambio de agua'+(m.notas?': '+m.notas:''));
+    (m.doneDates||[]).forEach(dd=>push(dd,'var(--sage)','Cambio de agua hecho'));
+  });
+  (data.feeding||[]).forEach(m=>{
+    const n = nextMedDue(m);
+    if(n) push(n, 'var(--butter-dark)', 'Alimentación: '+(m.name||'')+(m.hora?' '+m.hora:''));
+    (m.doneDates||[]).forEach(dd=>push(dd,'var(--sage)','Alimentación dada: '+(m.name||'')));
+  });
   return events;
 }
 
@@ -1836,6 +1859,16 @@ async function markSingleMedDone(petId, medId){
   med.done = true;
   await savePetData(petId); render();
 }
+async function markGenericDone(petId, coll, entryId, dateISO){
+  const entry = STATE.petData[petId][coll].find(x=>x.id===entryId);
+  entry.doneDates = entry.doneDates||[]; entry.doneDates.push(dateISO);
+  await savePetData(petId); render();
+}
+async function markSingleGenericDone(petId, coll, entryId){
+  const entry = STATE.petData[petId][coll].find(x=>x.id===entryId);
+  entry.done = true;
+  await savePetData(petId); render();
+}
 
 /* ---- Vacunas tab ---- */
 function tabVacunas(pet, embedded){
@@ -1884,6 +1917,83 @@ function tabConsultas(pet, embedded){
         ${waEntryStatusHtml(pet, c, 'consulta')}
         <div class="stamp-actions">
           <button class="mini-btn ghost" onclick="deleteEntry('${pet.id}','consultas','${c.id}')">Eliminar</button>
+        </div>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+/* ---- Cambio de agua tab (peces / animales exóticos) ---- */
+function tabAgua(pet, embedded){
+  const list = STATE.petData[pet.id].waterChanges||[];
+  if(list.length===0) return `${embedded?'':'<div class="section-title">Cambio de agua</div>'}<div class="empty-state"><div class="e">💧</div><p>Todavía no registraste cambios de agua.<br>Tocá "+ Agregar cambio de agua" para cargar uno.</p></div>`;
+  const today = todayISO();
+  const sorted = [...list].sort((a,b)=>{
+    const na=nextMedDue(a), nb=nextMedDue(b);
+    if(!na && !nb) return 0; if(!na) return 1; if(!nb) return -1;
+    return na<nb?-1:1;
+  });
+  return `
+    ${embedded?'':'<div class="section-title">Cambio de agua</div>'}
+    <div class="section-hint">${list.length} registrado${list.length===1?'':'s'}</div>
+    ${sorted.map(m=>{
+      const next = nextMedDue(m);
+      let badgeClass='';
+      if(next===null) badgeClass='ghost';
+      else{ const diff = daysBetween(today,next); badgeClass = diff<0?'overdue':(diff<=1?'due':''); }
+      return `
+      <div class="stamp-card">
+        <div class="row1">
+          <div>
+            <div class="name">${escapeHtml(m.notas||'Cambio de agua')}</div>
+            <div class="detail">${m.type==='single'?'Único el '+fmtDate(m.startDate):'Cada '+m.freqDays+' días'}<br>
+            Desde ${fmtDate(m.startDate)}${m.endDate?' hasta '+fmtDate(m.endDate):''}</div>
+          </div>
+          <div class="badge-circle ${badgeClass}"><div class="num">${next?fmtDate(next).split(' ')[0]:'✓'}</div><div>${next?fmtDate(next).split(' ')[1].replace('.',''):'listo'}</div></div>
+        </div>
+        ${waEntryStatusHtml(pet, m, 'agua')}
+        <div class="stamp-actions">
+          ${next && m.type!=='single' ? `<button class="mini-btn" onclick="markGenericDone('${pet.id}','waterChanges','${m.id}','${next}')">Marcar hecho</button>`:''}
+          ${next && m.type==='single' ? `<button class="mini-btn" onclick="markSingleGenericDone('${pet.id}','waterChanges','${m.id}')">Marcar hecho</button>`:''}
+          <button class="mini-btn ghost" onclick="deleteEntry('${pet.id}','waterChanges','${m.id}')">Eliminar</button>
+        </div>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+/* ---- Alimentación tab (peces / animales exóticos, opcional para el resto) ---- */
+function tabAlimentacion(pet, embedded){
+  const list = STATE.petData[pet.id].feeding||[];
+  if(list.length===0) return `${embedded?'':'<div class="section-title">Alimentación</div>'}<div class="empty-state"><div class="e">🍽️</div><p>Todavía no cargaste turnos de comida.<br>Tocá "+ Agregar horario" para crear uno.</p></div>`;
+  const today = todayISO();
+  const sorted = [...list].sort((a,b)=>{
+    const na=nextMedDue(a), nb=nextMedDue(b);
+    if(!na && !nb) return 0; if(!na) return 1; if(!nb) return -1;
+    return na<nb?-1:1;
+  });
+  return `
+    ${embedded?'':'<div class="section-title">Alimentación</div>'}
+    <div class="section-hint">${list.length} turno${list.length===1?'':'s'} configurado${list.length===1?'':'s'}</div>
+    ${sorted.map(m=>{
+      const next = nextMedDue(m);
+      let badgeClass='';
+      if(next===null) badgeClass='ghost';
+      else{ const diff = daysBetween(today,next); badgeClass = diff<0?'overdue':(diff<=1?'due':''); }
+      return `
+      <div class="stamp-card">
+        <div class="row1">
+          <div>
+            <div class="name">${escapeHtml(m.name)}${m.hora?' · '+m.hora:''}</div>
+            <div class="detail">${m.cantidad?escapeHtml(m.cantidad)+' · ':''}${m.freqDays===1?'Todos los días':'Cada '+m.freqDays+' días'}<br>
+            Desde ${fmtDate(m.startDate)}${m.endDate?' hasta '+fmtDate(m.endDate):''}</div>
+          </div>
+          <div class="badge-circle ${badgeClass}"><div class="num">${next?fmtDate(next).split(' ')[0]:'✓'}</div><div>${next?fmtDate(next).split(' ')[1].replace('.',''):'listo'}</div></div>
+        </div>
+        ${waEntryStatusHtml(pet, m, 'alimentacion')}
+        <div class="stamp-actions">
+          ${next ? `<button class="mini-btn" onclick="markGenericDone('${pet.id}','feeding','${m.id}','${next}')">Marcar dado</button>`:''}
+          <button class="mini-btn ghost" onclick="deleteEntry('${pet.id}','feeding','${m.id}')">Eliminar</button>
         </div>
       </div>`;
     }).join('')}
@@ -1972,6 +2082,8 @@ function accordionContentHtml(pet, id){
     medicacion:{type:'med', label:'+ Agregar medicación'},
     vacunas:{type:'vaccine', label:'+ Agregar vacuna'},
     consultas:{type:'consulta', label:'+ Agregar consulta'},
+    agua:{type:'agua', label:'+ Agregar cambio de agua'},
+    alimentacion:{type:'alimentacion', label:'+ Agregar horario'},
     peso:{type:'weight', label:'+ Registrar peso'},
     notas:{type:'note', label:'+ Agregar nota'}
   };
@@ -1981,6 +2093,8 @@ function accordionContentHtml(pet, id){
   else if(id==='medicacion') body = tabMedicacion(pet, true);
   else if(id==='vacunas') body = tabVacunas(pet, true);
   else if(id==='consultas') body = tabConsultas(pet, true);
+  else if(id==='agua') body = tabAgua(pet, true);
+  else if(id==='alimentacion') body = tabAlimentacion(pet, true);
   else if(id==='peso') body = tabPeso(pet, true);
   else if(id==='notas') body = tabNotas(pet, true);
   return `
@@ -1995,6 +2109,7 @@ function tabPerfil(pet){
   const neutLabel = {si:'Sí',no:'No',nose:'No sé'}[pet.neutered];
   const photos = (STATE.petData[pet.id].photos)||[];
   const showNeutered = pet.species !== 'pez';
+  const isAquaticOrExotic = (pet.species==='pez' || pet.species==='exotico');
   return `
     <div class="profile-avatar">${avatarHtml(pet)}</div>
     <div style="text-align:center;margin:-4px 0 10px;">
@@ -2018,14 +2133,24 @@ function tabPerfil(pet){
       <div class="allergy-warn" style="color:rgba(19,36,32,0.5);margin-top:6px;">Se guarda automáticamente al salir del campo.</div>
     </div>
 
+    ${isAquaticOrExotic ? `
+    <div class="section-title" style="margin-top:26px;font-size:18px;">Cuidados específicos</div>
+    <div class="section-hint">Recomendado para peces y animales exóticos.</div>
+    <div class="profile-nav">
+      ${accordionItemHtml(pet,'agua','💧','Cambio de agua')}
+      ${accordionItemHtml(pet,'alimentacion','🍽️','Alimentación')}
+    </div>
+    ` : ''}
+
     <div class="section-title" style="margin-top:26px;font-size:18px;">Secciones</div>
     <div class="section-hint">Tocá una sección para desplegarla acá mismo.</div>
     <div class="profile-nav">
       <div class="profile-nav-item active" style="cursor:default;">
         <span class="pnav-label">🪪 Perfil</span>
       </div>
-      ${DASHBOARD_TABS.filter(([id])=>id!=='perfil').map(([id,icon,label])=>accordionItemHtml(pet,id,icon,label)).join('')}
+      ${DASHBOARD_TABS.filter(([id])=> id!=='perfil' && !(isAquaticOrExotic && (id==='agua'||id==='alimentacion'))).map(([id,icon,label])=>accordionItemHtml(pet,id,icon,label)).join('')}
     </div>
+    ${!isAquaticOrExotic ? `<div class="section-hint" style="margin-top:8px;">💧🍽️ "Cambio de agua" y "Alimentación" están disponibles arriba, dentro de Secciones, por si querés usarlos igual con esta mascota.</div>` : ''}
 
     <div class="section-title" style="margin-top:26px;font-size:18px;">Fotos guardadas</div>
     <div class="section-hint">Guardá varias fotos por si tu mascota se pierde y las necesitás para un cartel o para mostrarlas.</div>
@@ -2235,6 +2360,8 @@ function renderModal(){
   if(t==='med'){ title='Agregar medicación'; body=modalMedForm(); }
   if(t==='vaccine'){ title='Agregar vacuna'; body=modalVaccineForm(); }
   if(t==='consulta'){ title='Agregar consulta'; body=modalAppointmentForm(); }
+  if(t==='agua'){ title='Agregar cambio de agua'; body=modalAguaForm(); }
+  if(t==='alimentacion'){ title='Agregar horario de alimentación'; body=modalAlimentacionForm(); }
   if(t==='weight'){ title='Registrar peso'; body=modalWeightForm(); }
   if(t==='note'){ title='Agregar nota'; body=modalNoteForm(); }
   if(t==='editPet'){ title='Editar información'; body=modalEditPetForm(); }
@@ -2320,6 +2447,64 @@ async function saveAppointmentModal(){
   const c = {id:uid(), motivo:d.motivo||'', fecha:d.fecha, hora:d.hora||'', notas:d.notas||'', whatsapp: d.whatsapp||{enabled:false}};
   const pet = STATE.pets.find(p=>p.id===STATE.activePetId);
   STATE.petData[pet.id].consultas.push(c);
+  await savePetData(pet.id); closeModal();
+}
+
+function modalAguaForm(){
+  const d = STATE.modal.draft;
+  return `
+    <div class="field"><label>Notas (opcional)</label><input type="text" placeholder="Ej: cambio parcial 25%, filtro limpio" oninput="STATE.modal.draft.notas=this.value" value="${escapeHtml(d.notas||'')}"></div>
+    <div class="field">
+      <label>Tipo</label>
+      <div class="pill-row">
+        <button class="pill ${d.type!=='single'?'selected':''}" onclick="STATE.modal.draft.type='interval';render()">Intervalo (cada X días)</button>
+        <button class="pill ${d.type==='single'?'selected':''}" onclick="STATE.modal.draft.type='single';render()">Único</button>
+      </div>
+    </div>
+    ${d.type==='single' ? `
+      <div class="field"><label>Fecha</label><input type="date" value="${d.startDate||todayISO()}" oninput="STATE.modal.draft.startDate=this.value"></div>
+    ` : `
+      <div class="field"><label>Cada cuántos días</label><input type="number" min="1" placeholder="Ej: 7" value="${d.freqDays||''}" oninput="STATE.modal.draft.freqDays=parseInt(this.value||1)"></div>
+      <div class="field"><label>Fecha de inicio</label><input type="date" value="${d.startDate||todayISO()}" oninput="STATE.modal.draft.startDate=this.value"></div>
+      <div class="field"><label>Fecha de fin (opcional)</label><input type="date" value="${d.endDate||''}" oninput="STATE.modal.draft.endDate=this.value"></div>
+    `}
+    ${waFieldsHtml(d)}
+    <button class="btn-primary" onclick="saveAguaModal()">Guardar</button>
+  `;
+}
+async function saveAguaModal(){
+  const d = STATE.modal.draft;
+  d.type = d.type==='single' ? 'single' : 'interval';
+  d.startDate = d.startDate || todayISO();
+  if(d.type==='interval' && !d.freqDays){ alert('Indicá cada cuántos días se cambia el agua.'); return; }
+  const entry = {id:uid(), notas:d.notas||'', type:d.type, startDate:d.startDate, endDate:d.endDate||'', freqDays:d.freqDays||1, doneDates:[], done:false, whatsapp: d.whatsapp||{enabled:false}};
+  const pet = STATE.pets.find(p=>p.id===STATE.activePetId);
+  STATE.petData[pet.id].waterChanges.push(entry);
+  await savePetData(pet.id); closeModal();
+}
+
+function modalAlimentacionForm(){
+  const d = STATE.modal.draft;
+  return `
+    <div class="field"><label>Nombre del turno</label><input type="text" placeholder="Ej: Desayuno, Ración de la tarde…" oninput="STATE.modal.draft.name=this.value" value="${escapeHtml(d.name||'')}"></div>
+    <div class="field"><label>Cantidad (opcional)</label><input type="text" placeholder="Ej: 1 taza, 2 cucharadas…" oninput="STATE.modal.draft.cantidad=this.value" value="${escapeHtml(d.cantidad||'')}"></div>
+    <div class="wa-row">
+      <div class="field"><label>Hora</label><input type="time" value="${d.hora||''}" oninput="STATE.modal.draft.hora=this.value"></div>
+      <div class="field"><label>Cada cuántos días</label><input type="number" min="1" placeholder="1 = todos los días" value="${d.freqDays||1}" oninput="STATE.modal.draft.freqDays=parseInt(this.value||1)"></div>
+    </div>
+    <div class="field"><label>Fecha de inicio</label><input type="date" value="${d.startDate||todayISO()}" oninput="STATE.modal.draft.startDate=this.value"></div>
+    <div class="field"><label>Fecha de fin (opcional)</label><input type="date" value="${d.endDate||''}" oninput="STATE.modal.draft.endDate=this.value"></div>
+    ${waFieldsHtml(d)}
+    <button class="btn-primary" onclick="saveAlimentacionModal()">Guardar</button>
+  `;
+}
+async function saveAlimentacionModal(){
+  const d = STATE.modal.draft;
+  if(!d.name || !d.name.trim()){ alert('Poné un nombre para el turno de comida (ej: Desayuno).'); return; }
+  d.startDate = d.startDate || todayISO();
+  const entry = {id:uid(), name:d.name.trim(), cantidad:d.cantidad||'', hora:d.hora||'', type:'interval', startDate:d.startDate, endDate:d.endDate||'', freqDays:d.freqDays||1, doneDates:[], done:false, whatsapp: d.whatsapp||{enabled:false}};
+  const pet = STATE.pets.find(p=>p.id===STATE.activePetId);
+  STATE.petData[pet.id].feeding.push(entry);
   await savePetData(pet.id); closeModal();
 }
 
