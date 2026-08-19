@@ -480,33 +480,45 @@
     display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;
     padding:5px 10px;border-radius:20px;margin-top:8px;
   }
-  .wa-status.scheduled{background:rgba(37,211,102,0.15);color:var(--whatsapp-dark);}
-  .wa-status.due{background:var(--whatsapp);color:#fff;}
+  .wa-status.scheduled{background:rgba(255,107,91,0.14);color:var(--coral);}
+  .wa-status.due{background:var(--coral);color:#fff;}
   .wa-send-btn{
     display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;
-    padding:8px 13px;border-radius:9px;border:none;background:var(--whatsapp);color:#fff;
+    padding:8px 13px;border-radius:9px;border:none;background:var(--coral);color:#fff;
     cursor:pointer;margin-top:8px;text-decoration:none;
   }
-  .wa-send-btn:active{background:var(--whatsapp-dark);}
+  .wa-send-btn:active{background:#E14A3A;}
 
-  /* ---------- Home banner for due alarms ---------- */
-  .alarm-banner{
-    background:var(--whatsapp);color:#fff;border-radius:16px;padding:15px 16px;
-    margin-bottom:18px;
+  /* ---------- Pantalla de alarma sonando ---------- */
+  .alarm-ring-overlay{
+    position:fixed;inset:0;z-index:100;background:rgba(15,38,32,0.94);
+    display:flex;align-items:center;justify-content:center;padding:24px;
   }
-  .alarm-banner .h{font-family:'Fraunces',serif;font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;margin-bottom:10px;}
-  .alarm-item{
-    display:flex;justify-content:space-between;align-items:center;
-    background:rgba(255,255,255,0.15);border-radius:10px;padding:10px 12px;margin-bottom:8px;
-    font-size:12.5px;
+  .alarm-ring-card{
+    width:100%;max-width:380px;text-align:center;color:var(--paper);
   }
-  .alarm-item:last-child{margin-bottom:0;}
-  .alarm-item .a-actions{display:flex;gap:6px;}
-  .alarm-item .a-btn{
-    background:#fff;color:var(--whatsapp-dark);border:none;border-radius:7px;
-    font-size:11px;font-weight:700;padding:6px 9px;cursor:pointer;text-decoration:none;display:inline-block;
+  .alarm-ring-card .ring-icon{
+    font-size:64px;animation:ringShake 0.6s ease-in-out infinite;margin-bottom:6px;
   }
-  .alarm-item .a-btn.ghost{background:rgba(255,255,255,0.25);color:#fff;}
+  @keyframes ringShake{
+    0%,100%{transform:rotate(0deg);}
+    20%{transform:rotate(-14deg);}
+    40%{transform:rotate(12deg);}
+    60%{transform:rotate(-8deg);}
+    80%{transform:rotate(6deg);}
+  }
+  .ring-pet-avatar{
+    width:84px;height:84px;border-radius:50%;background:var(--butter);
+    display:flex;align-items:center;justify-content:center;font-size:40px;
+    margin:10px auto 12px;overflow:hidden;border:3px solid var(--paper);
+  }
+  .ring-pet-avatar img{width:100%;height:100%;object-fit:cover;}
+  .ring-pet-name{font-family:'Fraunces',serif;font-size:24px;font-weight:700;}
+  .ring-kind{font-size:14px;color:var(--butter);font-weight:700;margin-top:4px;}
+  .ring-msg{font-size:14.5px;line-height:1.5;margin:14px 0 26px;color:rgba(255,251,242,0.85);}
+  .alarm-ring-card .ring-actions{display:flex;flex-direction:column;gap:10px;}
+  .alarm-ring-card .btn-primary{background:var(--coral);}
+  .alarm-ring-card .btn-secondary{border-color:rgba(255,251,242,0.35);color:var(--paper);}
 
   /* ---------- Allergies box ---------- */
   .allergy-box{
@@ -567,6 +579,7 @@
   <div id="fab-container"></div>
 </div>
 <div id="modal-container"></div>
+<div id="alarm-overlay-container"></div>
 <div id="print-area"></div>
 
 <script>
@@ -624,6 +637,9 @@ let STATE = {
   posterStage: 'edit', // 'edit' | 'preview'
   posterDraft: null,
   posterImageDataUrl: null,
+  ringingAlarm: null,   // alarma sonando ahora mismo {pet,entry,kind,coll}
+  alarmQueue: [],        // alarmas detectadas, esperando a sonar una por vez
+  snoozedUntil: {},      // {'coll:id': timestamp} pospuestas temporalmente (no se guarda, solo en memoria)
 };
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
@@ -656,6 +672,22 @@ async function loadAll(){
     if(!pd.photos) pd.photos=[];
     if(!pd.waterChanges) pd.waterChanges=[];
     if(!pd.feeding) pd.feeding=[];
+    // Migración: las versiones anteriores guardaban el recordatorio como
+    // "whatsapp" (con teléfono). Ahora es una alarma local, sin teléfono.
+    ['meds','consultas','waterChanges','feeding'].forEach(coll=>{
+      (pd[coll]||[]).forEach(entry=>{
+        if(!entry.alarm && entry.whatsapp){
+          entry.alarm = {
+            enabled: !!entry.whatsapp.enabled,
+            date: entry.whatsapp.date||'',
+            time: entry.whatsapp.time||'09:00',
+            repeat: entry.whatsapp.repeat||'none',
+            sent: !!entry.whatsapp.sent
+          };
+          delete entry.whatsapp;
+        }
+      });
+    });
   }
   try{
     const oc = await window.storage.get('owner-contact', false);
@@ -663,6 +695,8 @@ async function loadAll(){
   }catch(e){ STATE.ownerContact = {name:'', phone:''}; }
   STATE.loading = false;
   render();
+  checkAlarms();
+  setInterval(checkAlarms, 20000);
 }
 async function savePets(){
   try{ await window.storage.set('pets', JSON.stringify(STATE.pets), false); }
@@ -736,101 +770,229 @@ function dayLabel(diff){
   return 'en '+diff+'d';
 }
 
-/* ---------- WhatsApp alarm helpers ---------- */
+/* ---------- Alarma local del celular (reemplaza el aviso por WhatsApp) ---------- */
 const REPEAT_LABELS = {none:'No repetir', daily:'Diario', weekly:'Semanal', monthly:'Mensual'};
 function combineDateTime(date,time){
   if(!date) return null;
   return new Date(date+'T'+(time||'09:00')+':00');
 }
-function isAlarmDue(wa){
-  if(!wa || !wa.enabled || !wa.date) return false;
-  const dt = combineDateTime(wa.date, wa.time);
+function isAlarmDue(alarm){
+  if(!alarm || !alarm.enabled || !alarm.date) return false;
+  const dt = combineDateTime(alarm.date, alarm.time);
   if(!dt) return false;
-  if(wa.repeat!=='none' ) return dt <= new Date();
-  return dt <= new Date() && !wa.sent;
+  if(alarm.repeat!=='none') return dt <= new Date();
+  return dt <= new Date() && !alarm.sent;
 }
 const KIND_COLLECTION = {med:'meds', consulta:'consultas', agua:'waterChanges', alimentacion:'feeding'};
-function waMessageFor(pet, kind, entry){
-  if(kind==='med') return `Recordatorio 🐾: dale a ${pet.name} su medicación "${entry.name}"${entry.dose?' ('+entry.dose+')':''}.`;
-  if(kind==='agua') return `Recordatorio 🐾: cambiale el agua a ${pet.name}${entry.notas?' ('+entry.notas+')':''}.`;
-  if(kind==='alimentacion') return `Recordatorio 🐾: dale de comer a ${pet.name}${entry.name?' — '+entry.name:''}${entry.hora?' ('+entry.hora+')':''}.`;
-  return `Recordatorio 🐾: ${pet.name} tiene consulta veterinaria${entry.motivo?' por "'+entry.motivo+'"':''} el ${fmtDate(entry.fecha)}${entry.hora?' a las '+entry.hora:''}.`;
+function alarmMessageFor(pet, kind, entry){
+  if(kind==='med') return `Dale a ${pet.name} su medicación "${entry.name}"${entry.dose?' ('+entry.dose+')':''}.`;
+  if(kind==='agua') return `Cambiale el agua a ${pet.name}${entry.notas?' ('+entry.notas+')':''}.`;
+  if(kind==='alimentacion') return `Dale de comer a ${pet.name}${entry.name?' — '+entry.name:''}${entry.hora?' ('+entry.hora+')':''}.`;
+  return `${pet.name} tiene consulta veterinaria${entry.motivo?' por "'+entry.motivo+'"':''} el ${fmtDate(entry.fecha)}${entry.hora?' a las '+entry.hora:''}.`;
 }
-function waLink(phone, message){
-  const text = encodeURIComponent(message);
-  const clean = (phone||'').replace(/[^0-9]/g,'');
-  return clean ? `https://wa.me/${clean}?text=${text}` : `https://api.whatsapp.com/send?text=${text}`;
+function advanceAlarm(alarm){
+  if(!alarm.date) return;
+  const d = new Date(alarm.date+'T00:00:00');
+  if(alarm.repeat==='daily') d.setDate(d.getDate()+1);
+  else if(alarm.repeat==='weekly') d.setDate(d.getDate()+7);
+  else if(alarm.repeat==='monthly') d.setMonth(d.getMonth()+1);
+  else { alarm.sent = true; return; }
+  alarm.date = d.toISOString().slice(0,10);
+  alarm.sent = false;
 }
-function advanceAlarm(wa){
-  if(!wa.date) return;
-  const d = new Date(wa.date+'T00:00:00');
-  if(wa.repeat==='daily') d.setDate(d.getDate()+1);
-  else if(wa.repeat==='weekly') d.setDate(d.getDate()+7);
-  else if(wa.repeat==='monthly') d.setMonth(d.getMonth()+1);
-  else { wa.sent = true; return; }
-  wa.date = d.toISOString().slice(0,10);
-  wa.sent = false;
-}
-function collectDueAlarms(){
+function collectDueLocalAlarms(){
   const out = [];
   STATE.pets.forEach(pet=>{
     const data = STATE.petData[pet.id]||{};
-    (data.meds||[]).forEach(m=>{ if(isAlarmDue(m.whatsapp)) out.push({pet,entry:m,kind:'med',coll:'meds'}); });
-    (data.consultas||[]).forEach(c=>{ if(isAlarmDue(c.whatsapp)) out.push({pet,entry:c,kind:'consulta',coll:'consultas'}); });
-    (data.waterChanges||[]).forEach(m=>{ if(isAlarmDue(m.whatsapp)) out.push({pet,entry:m,kind:'agua',coll:'waterChanges'}); });
-    (data.feeding||[]).forEach(m=>{ if(isAlarmDue(m.whatsapp)) out.push({pet,entry:m,kind:'alimentacion',coll:'feeding'}); });
+    (data.meds||[]).forEach(m=>{ if(isAlarmDue(m.alarm)) out.push({pet,entry:m,kind:'med',coll:'meds'}); });
+    (data.consultas||[]).forEach(c=>{ if(isAlarmDue(c.alarm)) out.push({pet,entry:c,kind:'consulta',coll:'consultas'}); });
+    (data.waterChanges||[]).forEach(m=>{ if(isAlarmDue(m.alarm)) out.push({pet,entry:m,kind:'agua',coll:'waterChanges'}); });
+    (data.feeding||[]).forEach(m=>{ if(isAlarmDue(m.alarm)) out.push({pet,entry:m,kind:'alimentacion',coll:'feeding'}); });
   });
   return out;
 }
 async function markAlarmSent(petId, coll, entryId){
   const entry = STATE.petData[petId][coll].find(x=>x.id===entryId);
-  if(entry && entry.whatsapp) advanceAlarm(entry.whatsapp);
+  if(entry && entry.alarm) advanceAlarm(entry.alarm);
   await savePetData(petId); render();
 }
-function waFieldsHtml(d){
-  d.whatsapp = d.whatsapp || {enabled:false, phone:'', date:'', time:'09:00', repeat:'none', sent:false};
-  const wa = d.whatsapp;
+function alarmFieldsHtml(d){
+  d.alarm = d.alarm || {enabled:false, date:'', time:'09:00', repeat:'none', sent:false};
+  const alarm = d.alarm;
   return `
     <div class="wa-toggle">
-      <div class="lbl">💬 Avisar por WhatsApp</div>
+      <div class="lbl">🔔 Activar alarma en el celular</div>
       <label class="switch">
-        <input type="checkbox" ${wa.enabled?'checked':''} onchange="toggleWaField(this.checked)">
+        <input type="checkbox" ${alarm.enabled?'checked':''} onchange="toggleAlarmField(this.checked)">
         <span class="track"></span>
       </label>
     </div>
-    ${wa.enabled ? `
+    ${alarm.enabled ? `
       <div class="wa-fields">
-        <div class="wa-title">💬 Datos del aviso</div>
-        <div class="field"><label>Número (opcional)</label><input type="text" placeholder="Ej: 549291XXXXXXX" value="${escapeHtml(wa.phone||'')}" oninput="STATE.modal.draft.whatsapp.phone=this.value"></div>
+        <div class="wa-title">🔔 Datos de la alarma</div>
         <div class="wa-row">
-          <div class="field"><label>Fecha del aviso</label><input type="date" value="${wa.date||''}" oninput="STATE.modal.draft.whatsapp.date=this.value"></div>
-          <div class="field"><label>Hora</label><input type="time" value="${wa.time||'09:00'}" oninput="STATE.modal.draft.whatsapp.time=this.value"></div>
+          <div class="field"><label>Fecha de la alarma</label><input type="date" value="${alarm.date||''}" oninput="STATE.modal.draft.alarm.date=this.value"></div>
+          <div class="field"><label>Hora</label><input type="time" value="${alarm.time||'09:00'}" oninput="STATE.modal.draft.alarm.time=this.value"></div>
         </div>
         <div class="field" style="margin-bottom:0;">
-          <label>Repetir aviso</label>
+          <label>Repetir alarma</label>
           <div class="pill-row">
-            ${Object.entries(REPEAT_LABELS).map(([k,l])=>`<button class="pill ${wa.repeat===k?'selected':''}" onclick="STATE.modal.draft.whatsapp.repeat='${k}';render()">${l}</button>`).join('')}
+            ${Object.entries(REPEAT_LABELS).map(([k,l])=>`<button class="pill ${alarm.repeat===k?'selected':''}" onclick="STATE.modal.draft.alarm.repeat='${k}';render()">${l}</button>`).join('')}
           </div>
         </div>
+        ${typeof Notification!=='undefined' && Notification.permission!=='granted' ? `
+          <div class="section-hint" style="margin-top:12px;">
+            📳 Activá las notificaciones para que la alarma te avise incluso si tenés el celular bloqueado.
+            <button class="mini-btn" style="display:block;margin-top:8px;" onclick="requestNotificationPermission()">Activar notificaciones</button>
+          </div>
+        ` : ''}
       </div>
     ` : ''}
   `;
 }
-function toggleWaField(checked){
-  STATE.modal.draft.whatsapp = STATE.modal.draft.whatsapp || {enabled:false, phone:'', date:'', time:'09:00', repeat:'none', sent:false};
-  STATE.modal.draft.whatsapp.enabled = checked;
-  if(checked && !STATE.modal.draft.whatsapp.date) STATE.modal.draft.whatsapp.date = todayISO();
+function toggleAlarmField(checked){
+  STATE.modal.draft.alarm = STATE.modal.draft.alarm || {enabled:false, date:'', time:'09:00', repeat:'none', sent:false};
+  STATE.modal.draft.alarm.enabled = checked;
+  if(checked){
+    if(!STATE.modal.draft.alarm.date) STATE.modal.draft.alarm.date = todayISO();
+    requestNotificationPermission();
+  }
   render();
 }
-function waEntryStatusHtml(pet, entry, kind){
-  const wa = entry.whatsapp;
-  if(!wa || !wa.enabled) return '';
-  const due = isAlarmDue(wa);
-  const link = waLink(wa.phone, waMessageFor(pet, kind, entry));
+function alarmEntryStatusHtml(pet, entry, kind){
+  const alarm = entry.alarm;
+  if(!alarm || !alarm.enabled) return '';
+  const due = isAlarmDue(alarm);
   return `
-    <div class="wa-status ${due?'due':'scheduled'}">💬 ${due?'Aviso listo para enviar':'Programado '+fmtDate(wa.date)+' '+(wa.time||'')} ${wa.repeat!=='none'?' · '+REPEAT_LABELS[wa.repeat]:''}</div>
+    <div class="wa-status ${due?'due':'scheduled'}">🔔 ${due?'¡Es la hora! Debería estar sonando':'Programada '+fmtDate(alarm.date)+' '+(alarm.time||'')} ${alarm.repeat!=='none'?' · '+REPEAT_LABELS[alarm.repeat]:''}</div>
     <div>
-      <a class="wa-send-btn" href="${link}" target="_blank" rel="noopener" onclick="markAlarmSent('${pet.id}','${KIND_COLLECTION[kind]||'meds'}','${entry.id}')">📲 Enviar por WhatsApp</a>
+      <button class="wa-send-btn" onclick="testRingAlarm('${pet.id}','${KIND_COLLECTION[kind]||'meds'}','${entry.id}','${kind}')">🔔 Probar esta alarma ahora</button>
+    </div>
+  `;
+}
+
+/* ---------- Motor de alarmas: chequeo periódico, sonido, vibración, notificación ---------- */
+let audioCtx = null;
+function unlockAudioContext(){
+  try{
+    if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==='suspended') audioCtx.resume();
+  }catch(e){}
+}
+document.addEventListener('click', unlockAudioContext, {once:false});
+
+let alarmBeepTimer = null;
+function playAlarmSound(){
+  try{
+    if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==='suspended') audioCtx.resume();
+    function beep(){
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.35, audioCtx.currentTime+0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+0.45);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(); osc.stop(audioCtx.currentTime+0.45);
+    }
+    beep();
+    alarmBeepTimer = setInterval(beep, 700);
+  }catch(e){}
+}
+function stopAlarmSound(){
+  if(alarmBeepTimer){ clearInterval(alarmBeepTimer); alarmBeepTimer=null; }
+}
+function vibrateDevice(){
+  try{ if(navigator.vibrate) navigator.vibrate([400,200,400,200,400]); }catch(e){}
+}
+async function requestNotificationPermission(){
+  try{
+    if(typeof Notification==='undefined') return;
+    if(Notification.permission==='default'){
+      await Notification.requestPermission();
+      render();
+    }
+  }catch(e){}
+}
+function showSystemNotification(pet, kind, entry){
+  try{
+    if(typeof Notification==='undefined' || Notification.permission!=='granted') return;
+    new Notification('🔔 '+(pet?pet.name:'Huellas'), { body: alarmMessageFor(pet, kind, entry), tag: kind+'-'+entry.id });
+  }catch(e){}
+}
+function ringAlarm(item){
+  STATE.ringingAlarm = item;
+  playAlarmSound();
+  vibrateDevice();
+  showSystemNotification(item.pet, item.kind, item.entry);
+  render();
+}
+function processAlarmQueue(){
+  if(!STATE.ringingAlarm && STATE.alarmQueue.length>0){
+    ringAlarm(STATE.alarmQueue.shift());
+  }else{
+    render();
+  }
+}
+async function dismissAlarm(){
+  stopAlarmSound();
+  const item = STATE.ringingAlarm;
+  STATE.ringingAlarm = null;
+  if(item) await markAlarmSent(item.pet.id, item.coll, item.entry.id);
+  processAlarmQueue();
+}
+function snoozeAlarm(){
+  stopAlarmSound();
+  const item = STATE.ringingAlarm;
+  STATE.ringingAlarm = null;
+  if(item){
+    const key = item.coll+':'+item.entry.id;
+    STATE.snoozedUntil[key] = Date.now() + 5*60*1000;
+    setTimeout(()=>{ checkAlarms(); }, 5*60*1000 + 500);
+  }
+  processAlarmQueue();
+}
+function testRingAlarm(petId, coll, entryId, kind){
+  const pet = STATE.pets.find(p=>p.id===petId);
+  const entry = STATE.petData[petId][coll].find(x=>x.id===entryId);
+  if(!pet || !entry) return;
+  STATE.alarmQueue.push({pet, entry, kind, coll});
+  processAlarmQueue();
+}
+function checkAlarms(){
+  if(STATE.loading) return;
+  const due = collectDueLocalAlarms();
+  const queuedKeys = new Set(STATE.alarmQueue.map(i=>i.coll+':'+i.entry.id));
+  const ringingKey = STATE.ringingAlarm ? STATE.ringingAlarm.coll+':'+STATE.ringingAlarm.entry.id : null;
+  due.forEach(item=>{
+    const key = item.coll+':'+item.entry.id;
+    if(key===ringingKey || queuedKeys.has(key)) return;
+    if(STATE.snoozedUntil[key] && STATE.snoozedUntil[key] > Date.now()) return;
+    STATE.alarmQueue.push(item);
+    queuedKeys.add(key);
+  });
+  processAlarmQueue();
+}
+function renderAlarmOverlay(){
+  const el = document.getElementById('alarm-overlay-container');
+  if(!STATE.ringingAlarm){ el.innerHTML=''; return; }
+  const { pet, entry, kind } = STATE.ringingAlarm;
+  const titleMap = {med:'💊 Medicación', consulta:'🩺 Consulta', agua:'💧 Cambio de agua', alimentacion:'🍽️ Alimentación'};
+  el.innerHTML = `
+    <div class="alarm-ring-overlay">
+      <div class="alarm-ring-card">
+        <div class="ring-icon">🔔</div>
+        <div class="ring-pet-avatar">${avatarHtml(pet)}</div>
+        <div class="ring-pet-name">${escapeHtml(pet.name)}</div>
+        <div class="ring-kind">${titleMap[kind]||'Recordatorio'}</div>
+        <div class="ring-msg">${escapeHtml(alarmMessageFor(pet, kind, entry))}</div>
+        <div class="ring-actions">
+          <button class="btn-primary" onclick="dismissAlarm()">✅ Apagar alarma</button>
+          <button class="btn-secondary" onclick="snoozeAlarm()">⏰ Posponer 5 minutos</button>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -847,6 +1009,7 @@ function render(){
   renderContent();
   renderFab();
   renderModal();
+  renderAlarmOverlay();
 }
 
 function renderTopbar(){
@@ -1016,7 +1179,6 @@ function viewHome(){
     `;
   }
   return `
-    ${alarmBannerHtml()}
     <div class="section-title">Tus mascotas</div>
     <div class="section-hint">Tocá una ficha para ver su agenda.</div>
     <div class="pet-grid">
@@ -1028,22 +1190,6 @@ function viewHome(){
       <div style="font-size:20px;">→</div>
     </div>
   `;
-}
-
-function alarmBannerHtml(){
-  const due = collectDueAlarms();
-  if(due.length===0) return '';
-  return `
-    <div class="alarm-banner">
-      <div class="h">💬 ${due.length} aviso${due.length===1?'':'s'} de WhatsApp para enviar</div>
-      ${due.map(({pet,entry,kind,coll})=>`
-        <div class="alarm-item">
-          <div>${pet.emoji} <strong>${escapeHtml(pet.name)}</strong> — ${kind==='med'?escapeHtml(entry.name):escapeHtml(entry.motivo||'Consulta')}</div>
-          <div class="a-actions">
-            <a class="a-btn" href="${waLink(entry.whatsapp.phone, waMessageFor(pet, kind, entry))}" target="_blank" rel="noopener" onclick="markAlarmSent('${pet.id}','${coll}','${entry.id}')">Enviar</a>
-          </div>
-        </div>`).join('')}
-    </div>`;
 }
 
 function petCardHtml(pet){
@@ -1294,6 +1440,11 @@ function viewShareSheet(){
   `;
 }
 
+function waLink(phone, message){
+  const text = encodeURIComponent(message);
+  const clean = (phone||'').replace(/[^0-9]/g,'');
+  return clean ? `https://wa.me/${clean}?text=${text}` : `https://api.whatsapp.com/send?text=${text}`;
+}
 function buildShareText(pet){
   const data = STATE.petData[pet.id];
   const today = todayISO();
@@ -1839,7 +1990,7 @@ function tabMedicacion(pet, embedded){
           </div>
           <div class="badge-circle ${badgeClass}"><div class="num">${next?fmtDate(next).split(' ')[0]:'✓'}</div><div>${next?fmtDate(next).split(' ')[1].replace('.',''):'listo'}</div></div>
         </div>
-        ${waEntryStatusHtml(pet, m, 'med')}
+        ${alarmEntryStatusHtml(pet, m, 'med')}
         <div class="stamp-actions">
           ${next && m.type!=='single' ? `<button class="mini-btn" onclick="markMedDone('${pet.id}','${m.id}','${next}')">Marcar aplicada</button>`:''}
           ${next && m.type==='single' ? `<button class="mini-btn" onclick="markSingleMedDone('${pet.id}','${m.id}')">Marcar aplicada</button>`:''}
@@ -1914,7 +2065,7 @@ function tabConsultas(pet, embedded){
           </div>
           ${diff!==null?`<div class="badge-circle ${badgeClass}"><div class="num">${dayLabel(diff).split(' ')[0]}</div></div>`:''}
         </div>
-        ${waEntryStatusHtml(pet, c, 'consulta')}
+        ${alarmEntryStatusHtml(pet, c, 'consulta')}
         <div class="stamp-actions">
           <button class="mini-btn ghost" onclick="deleteEntry('${pet.id}','consultas','${c.id}')">Eliminar</button>
         </div>
@@ -1951,7 +2102,7 @@ function tabAgua(pet, embedded){
           </div>
           <div class="badge-circle ${badgeClass}"><div class="num">${next?fmtDate(next).split(' ')[0]:'✓'}</div><div>${next?fmtDate(next).split(' ')[1].replace('.',''):'listo'}</div></div>
         </div>
-        ${waEntryStatusHtml(pet, m, 'agua')}
+        ${alarmEntryStatusHtml(pet, m, 'agua')}
         <div class="stamp-actions">
           ${next && m.type!=='single' ? `<button class="mini-btn" onclick="markGenericDone('${pet.id}','waterChanges','${m.id}','${next}')">Marcar hecho</button>`:''}
           ${next && m.type==='single' ? `<button class="mini-btn" onclick="markSingleGenericDone('${pet.id}','waterChanges','${m.id}')">Marcar hecho</button>`:''}
@@ -1990,7 +2141,7 @@ function tabAlimentacion(pet, embedded){
           </div>
           <div class="badge-circle ${badgeClass}"><div class="num">${next?fmtDate(next).split(' ')[0]:'✓'}</div><div>${next?fmtDate(next).split(' ')[1].replace('.',''):'listo'}</div></div>
         </div>
-        ${waEntryStatusHtml(pet, m, 'alimentacion')}
+        ${alarmEntryStatusHtml(pet, m, 'alimentacion')}
         <div class="stamp-actions">
           ${next ? `<button class="mini-btn" onclick="markGenericDone('${pet.id}','feeding','${m.id}','${next}')">Marcar dado</button>`:''}
           <button class="mini-btn ghost" onclick="deleteEntry('${pet.id}','feeding','${m.id}')">Eliminar</button>
@@ -2393,7 +2544,7 @@ function modalMedForm(){
       <div class="field"><label>Fecha de inicio</label><input type="date" value="${d.startDate||todayISO()}" oninput="STATE.modal.draft.startDate=this.value"></div>
       <div class="field"><label>Fecha de fin (opcional)</label><input type="date" value="${d.endDate||''}" oninput="STATE.modal.draft.endDate=this.value"></div>
     `}
-    ${waFieldsHtml(d)}
+    ${alarmFieldsHtml(d)}
     <button class="btn-primary" onclick="saveMedModal()">Guardar</button>
   `;
 }
@@ -2403,7 +2554,7 @@ async function saveMedModal(){
   d.type = d.type==='single' ? 'single' : 'interval';
   d.startDate = d.startDate || todayISO();
   if(d.type==='interval' && !d.freqDays){ alert('Indicá cada cuántos días se aplica.'); return; }
-  const med = {id:uid(), name:d.name.trim(), dose:d.dose||'', type:d.type, startDate:d.startDate, endDate:d.endDate||'', freqDays:d.freqDays||1, doneDates:[], done:false, whatsapp: d.whatsapp||{enabled:false}};
+  const med = {id:uid(), name:d.name.trim(), dose:d.dose||'', type:d.type, startDate:d.startDate, endDate:d.endDate||'', freqDays:d.freqDays||1, doneDates:[], done:false, alarm: d.alarm||{enabled:false}};
   const pet = STATE.pets.find(p=>p.id===STATE.activePetId);
   STATE.petData[pet.id].meds.push(med);
   await savePetData(pet.id); closeModal();
@@ -2437,14 +2588,14 @@ function modalAppointmentForm(){
       <div class="field"><label>Hora (opcional)</label><input type="time" value="${d.hora||''}" oninput="STATE.modal.draft.hora=this.value"></div>
     </div>
     <div class="field"><label>Notas (opcional)</label><input type="text" value="${escapeHtml(d.notas||'')}" oninput="STATE.modal.draft.notas=this.value"></div>
-    ${waFieldsHtml(d)}
+    ${alarmFieldsHtml(d)}
     <button class="btn-primary" onclick="saveAppointmentModal()">Guardar</button>
   `;
 }
 async function saveAppointmentModal(){
   const d = STATE.modal.draft;
   if(!d.fecha){ alert('Elegí la fecha de la consulta.'); return; }
-  const c = {id:uid(), motivo:d.motivo||'', fecha:d.fecha, hora:d.hora||'', notas:d.notas||'', whatsapp: d.whatsapp||{enabled:false}};
+  const c = {id:uid(), motivo:d.motivo||'', fecha:d.fecha, hora:d.hora||'', notas:d.notas||'', alarm: d.alarm||{enabled:false}};
   const pet = STATE.pets.find(p=>p.id===STATE.activePetId);
   STATE.petData[pet.id].consultas.push(c);
   await savePetData(pet.id); closeModal();
@@ -2468,7 +2619,7 @@ function modalAguaForm(){
       <div class="field"><label>Fecha de inicio</label><input type="date" value="${d.startDate||todayISO()}" oninput="STATE.modal.draft.startDate=this.value"></div>
       <div class="field"><label>Fecha de fin (opcional)</label><input type="date" value="${d.endDate||''}" oninput="STATE.modal.draft.endDate=this.value"></div>
     `}
-    ${waFieldsHtml(d)}
+    ${alarmFieldsHtml(d)}
     <button class="btn-primary" onclick="saveAguaModal()">Guardar</button>
   `;
 }
@@ -2477,7 +2628,7 @@ async function saveAguaModal(){
   d.type = d.type==='single' ? 'single' : 'interval';
   d.startDate = d.startDate || todayISO();
   if(d.type==='interval' && !d.freqDays){ alert('Indicá cada cuántos días se cambia el agua.'); return; }
-  const entry = {id:uid(), notas:d.notas||'', type:d.type, startDate:d.startDate, endDate:d.endDate||'', freqDays:d.freqDays||1, doneDates:[], done:false, whatsapp: d.whatsapp||{enabled:false}};
+  const entry = {id:uid(), notas:d.notas||'', type:d.type, startDate:d.startDate, endDate:d.endDate||'', freqDays:d.freqDays||1, doneDates:[], done:false, alarm: d.alarm||{enabled:false}};
   const pet = STATE.pets.find(p=>p.id===STATE.activePetId);
   STATE.petData[pet.id].waterChanges.push(entry);
   await savePetData(pet.id); closeModal();
@@ -2494,7 +2645,7 @@ function modalAlimentacionForm(){
     </div>
     <div class="field"><label>Fecha de inicio</label><input type="date" value="${d.startDate||todayISO()}" oninput="STATE.modal.draft.startDate=this.value"></div>
     <div class="field"><label>Fecha de fin (opcional)</label><input type="date" value="${d.endDate||''}" oninput="STATE.modal.draft.endDate=this.value"></div>
-    ${waFieldsHtml(d)}
+    ${alarmFieldsHtml(d)}
     <button class="btn-primary" onclick="saveAlimentacionModal()">Guardar</button>
   `;
 }
@@ -2502,7 +2653,7 @@ async function saveAlimentacionModal(){
   const d = STATE.modal.draft;
   if(!d.name || !d.name.trim()){ alert('Poné un nombre para el turno de comida (ej: Desayuno).'); return; }
   d.startDate = d.startDate || todayISO();
-  const entry = {id:uid(), name:d.name.trim(), cantidad:d.cantidad||'', hora:d.hora||'', type:'interval', startDate:d.startDate, endDate:d.endDate||'', freqDays:d.freqDays||1, doneDates:[], done:false, whatsapp: d.whatsapp||{enabled:false}};
+  const entry = {id:uid(), name:d.name.trim(), cantidad:d.cantidad||'', hora:d.hora||'', type:'interval', startDate:d.startDate, endDate:d.endDate||'', freqDays:d.freqDays||1, doneDates:[], done:false, alarm: d.alarm||{enabled:false}};
   const pet = STATE.pets.find(p=>p.id===STATE.activePetId);
   STATE.petData[pet.id].feeding.push(entry);
   await savePetData(pet.id); closeModal();
