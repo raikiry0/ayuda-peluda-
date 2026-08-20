@@ -47,6 +47,43 @@
     display:flex;
     flex-direction:column;
   }
+  .hidden{display:none !important;}
+
+  /* ---------- Pantalla de cuenta (login / registro / recuperar) ---------- */
+  #auth-shell{
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    padding:24px; background:var(--pine-dark);
+  }
+  .auth-card{
+    width:100%; max-width:400px; background:var(--paper); border-radius:22px;
+    padding:32px 28px; box-shadow:0 12px 32px rgba(0,0,0,0.3);
+  }
+  .auth-card .brand{
+    display:flex; align-items:center; gap:10px; margin-bottom:6px;
+    font-family:'Fraunces',serif; font-weight:700; font-size:24px; color:var(--pine-dark);
+  }
+  .auth-card .brand .stamp{
+    width:34px; height:34px; border-radius:50%; background:var(--butter);
+    display:flex; align-items:center; justify-content:center; font-size:18px; transform:rotate(-8deg);
+  }
+  .auth-subtitle{font-size:13px; color:rgba(19,36,32,0.6); margin-bottom:24px;}
+  .auth-field{margin-bottom:14px;}
+  .auth-field label{display:block; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; color:var(--pine); margin-bottom:6px;}
+  .auth-field input{
+    width:100%; padding:12px 13px; border:1.5px solid var(--line); border-radius:10px;
+    font-family:'Inter',sans-serif; font-size:14.5px; background:var(--paper);
+  }
+  .auth-field input:focus{outline:none; border-color:var(--pine);}
+  .auth-msg{padding:11px 13px; border-radius:10px; font-size:13px; margin-bottom:16px;}
+  .auth-msg.error{background:rgba(255,107,91,0.12); color:#C23B2C;}
+  .auth-msg.success{background:rgba(143,184,154,0.25); color:var(--pine-dark);}
+  .auth-switch{text-align:center; margin-top:18px; font-size:13px; color:rgba(19,36,32,0.7);}
+  .auth-switch a{color:var(--pine); font-weight:700; text-decoration:none; cursor:pointer;}
+  .account-footer{
+    text-align:center; margin-top:24px; padding-top:18px; border-top:1px dashed var(--line);
+    font-size:12.5px; color:rgba(19,36,32,0.5);
+  }
+  .account-footer a{color:var(--coral); font-weight:700; text-decoration:none; cursor:pointer;}
   ::selection{background:var(--butter);color:var(--ink);}
 
   /* ---------- Top bar ---------- */
@@ -573,7 +610,8 @@
 </style>
 </head>
 <body>
-<div id="shell">
+<div id="auth-shell" class="hidden"></div>
+<div id="shell" class="hidden">
   <div id="topbar-container"></div>
   <div id="content"><div class="loading-screen">🐾 Cargando…</div></div>
   <div id="fab-container"></div>
@@ -582,6 +620,19 @@
 <div id="alarm-overlay-container"></div>
 <div id="print-area"></div>
 
+<!--
+  ============================================================
+  Conexión a Supabase (Parte 2: base de datos de mascotas)
+  Pegá acá tus credenciales — las mismas que usaste en auth.html
+  (Project Settings > API en supabase.com)
+  ============================================================
+-->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = 'https://TU-PROYECTO.supabase.co';
+  const SUPABASE_ANON_KEY = 'TU-ANON-KEY-ACA';
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+</script>
 <script>
 /* ============================= DATA / STATE ============================= */
 const PROMO_LINK = 'https://raikiry0.github.io/ayuda-peluda-/';
@@ -640,6 +691,11 @@ let STATE = {
   ringingAlarm: null,   // alarma sonando ahora mismo {pet,entry,kind,coll}
   alarmQueue: [],        // alarmas detectadas, esperando a sonar una por vez
   snoozedUntil: {},      // {'coll:id': timestamp} pospuestas temporalmente (no se guarda, solo en memoria)
+  currentUser: null,
+  authView: 'login',     // login | signup | forgot | reset
+  authDraft: {},
+  authBusy: false,
+  authMsg: null,          // {text, type}
 };
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
@@ -647,19 +703,54 @@ const todayISO = () => new Date().toISOString().slice(0,10);
 const fmtDate = iso => { if(!iso) return '—'; const d=new Date(iso+'T00:00:00'); return d.toLocaleDateString('es-AR',{day:'2-digit',month:'short',year:'numeric'}); };
 const daysBetween = (a,b) => Math.round((new Date(b+'T00:00:00') - new Date(a+'T00:00:00'))/86400000);
 
-/* ============================= STORAGE ============================= */
+/* ============================= STORAGE (Supabase) ============================= */
+function dbPetToApp(row){
+  return {
+    id: row.id, name: row.name, species: row.species, emoji: row.emoji||'🐾',
+    photo: row.photo||'', avatarType: row.avatar_type||'emoji',
+    breed: row.breed||'', sex: row.sex||'nose', neutered: row.neutered||'',
+    birthMode: row.birth_mode||'exact', birthDate: row.birth_date||'',
+    estYears: row.est_years||0, estMonths: row.est_months||0,
+    createdAt: row.created_at ? row.created_at.slice(0,10) : todayISO(),
+    allergies: row.allergies||''
+  };
+}
+function appPetToDb(pet, userId){
+  return {
+    id: pet.id, user_id: userId, name: pet.name, species: pet.species, emoji: pet.emoji,
+    photo: pet.photo||'', avatar_type: pet.avatarType||'emoji',
+    breed: pet.breed||'', sex: pet.sex||'nose', neutered: pet.neutered||'',
+    birth_mode: pet.birthMode||'exact', birth_date: pet.birthDate || null,
+    est_years: pet.estYears||0, est_months: pet.estMonths||0,
+    allergies: pet.allergies||''
+  };
+}
+async function getCurrentUser(){
+  const { data:{ session } } = await supabaseClient.auth.getSession();
+  return session ? session.user : null;
+}
+
 async function loadAll(){
+  const user = await getCurrentUser();
+  if(!user){
+    STATE.loading = false;
+    showAuthShell();
+    authRender();
+    return;
+  }
+  STATE.currentUser = user;
+
   try{
-    const p = await window.storage.get('pets', false);
-    STATE.pets = p ? JSON.parse(p.value) : [];
-  }catch(e){ STATE.pets = []; }
+    const { data: pets, error } = await supabaseClient.from('pets').select('*').order('created_at');
+    if(error) throw error;
+    STATE.pets = (pets||[]).map(dbPetToApp);
+  }catch(e){ console.error('Error cargando mascotas', e); STATE.pets = []; }
+
   for(const pet of STATE.pets){
-    if(pet.allergies===undefined) pet.allergies='';
-    if(pet.avatarType===undefined) pet.avatarType='emoji';
-    if(pet.photo===undefined) pet.photo='';
     try{
-      const d = await window.storage.get('pet-data:'+pet.id, false);
-      STATE.petData[pet.id] = d ? JSON.parse(d.value) : {meds:[],vaccines:[],weights:[],notes:[],consultas:[],photos:[],waterChanges:[],feeding:[]};
+      const { data: row, error } = await supabaseClient.from('pet_data').select('data').eq('pet_id', pet.id).maybeSingle();
+      if(error) throw error;
+      STATE.petData[pet.id] = row && row.data ? row.data : {meds:[],vaccines:[],weights:[],notes:[],consultas:[],photos:[],waterChanges:[],feeding:[]};
     }catch(e){
       STATE.petData[pet.id] = {meds:[],vaccines:[],weights:[],notes:[],consultas:[],photos:[],waterChanges:[],feeding:[]};
     }
@@ -690,26 +781,168 @@ async function loadAll(){
     });
   }
   try{
-    const oc = await window.storage.get('owner-contact', false);
-    STATE.ownerContact = oc ? JSON.parse(oc.value) : {name:'', phone:''};
+    const { data: oc } = await supabaseClient.from('owner_contact').select('*').maybeSingle();
+    STATE.ownerContact = oc ? {name:oc.name||'', phone:oc.phone||''} : {name:'', phone:''};
   }catch(e){ STATE.ownerContact = {name:'', phone:''}; }
+
   STATE.loading = false;
+  STATE.view = 'home';
   render();
   checkAlarms();
   setInterval(checkAlarms, 20000);
 }
 async function savePets(){
-  try{ await window.storage.set('pets', JSON.stringify(STATE.pets), false); }
-  catch(e){ console.error('Error guardando mascotas', e); }
+  const user = await getCurrentUser();
+  if(!user || STATE.pets.length===0) return;
+  try{
+    const rows = STATE.pets.map(p=>appPetToDb(p, user.id));
+    const { error } = await supabaseClient.from('pets').upsert(rows, {onConflict:'id'});
+    if(error) console.error('Error guardando mascotas', error);
+  }catch(e){ console.error('Error guardando mascotas', e); }
 }
 async function savePetData(petId){
-  try{ await window.storage.set('pet-data:'+petId, JSON.stringify(STATE.petData[petId]), false); }
-  catch(e){ console.error('Error guardando datos de mascota', e); }
+  const user = await getCurrentUser();
+  if(!user) return;
+  try{
+    const { error } = await supabaseClient.from('pet_data').upsert({
+      pet_id: petId, user_id: user.id, data: STATE.petData[petId], updated_at: new Date().toISOString()
+    }, {onConflict:'pet_id'});
+    if(error) console.error('Error guardando datos de mascota', error);
+  }catch(e){ console.error('Error guardando datos de mascota', e); }
 }
 async function saveOwnerContact(name, phone){
   STATE.ownerContact = {name: name||'', phone: phone||''};
-  try{ await window.storage.set('owner-contact', JSON.stringify(STATE.ownerContact), false); }
-  catch(e){ console.error('Error guardando datos de contacto', e); }
+  const user = await getCurrentUser();
+  if(!user) return;
+  try{
+    const { error } = await supabaseClient.from('owner_contact').upsert({
+      user_id: user.id, name: STATE.ownerContact.name, phone: STATE.ownerContact.phone, updated_at: new Date().toISOString()
+    }, {onConflict:'user_id'});
+    if(error) console.error('Error guardando datos de contacto', error);
+  }catch(e){ console.error('Error guardando datos de contacto', e); }
+}
+
+/* ============================= AUTENTICACIÓN ============================= */
+function showAuthShell(){
+  document.getElementById('auth-shell').classList.remove('hidden');
+  document.getElementById('shell').classList.add('hidden');
+}
+function showAppShell(){
+  document.getElementById('auth-shell').classList.add('hidden');
+  document.getElementById('shell').classList.remove('hidden');
+}
+function setAuthView(view){
+  STATE.authView = view;
+  STATE.authMsg = null;
+  STATE.authDraft = {};
+  authRender();
+}
+function showAuthMsg(text, type){
+  STATE.authMsg = {text, type};
+  authRender();
+}
+function traducirAuthError(msg){
+  if(/invalid login credentials/i.test(msg)) return 'Mail o contraseña incorrectos.';
+  if(/user already registered/i.test(msg)) return 'Ya existe una cuenta con ese mail.';
+  if(/password should be at least/i.test(msg)) return 'La contraseña necesita al menos 6 caracteres.';
+  if(/email not confirmed/i.test(msg)) return 'Todavía no confirmaste tu mail. Revisá tu bandeja de entrada.';
+  return msg;
+}
+function authRender(){
+  const el = document.getElementById('auth-shell');
+  if(!el) return;
+  const d = STATE.authDraft;
+  const busy = STATE.authBusy;
+  let body = '';
+  if(STATE.authView==='login'){
+    body = `
+      <div class="auth-field"><label>Mail</label><input type="email" value="${escapeHtml(d.email||'')}" oninput="STATE.authDraft.email=this.value"></div>
+      <div class="auth-field"><label>Contraseña</label><input type="password" value="${escapeHtml(d.password||'')}" oninput="STATE.authDraft.password=this.value"></div>
+      <button class="btn-primary" ${busy?'disabled':''} onclick="doLogin()">${busy?'Un momento…':'Ingresar'}</button>
+      <div class="auth-switch">
+        <a onclick="setAuthView('forgot')">Olvidé mi contraseña</a><br><br>
+        ¿No tenés cuenta? <a onclick="setAuthView('signup')">Registrate</a>
+      </div>`;
+  } else if(STATE.authView==='signup'){
+    body = `
+      <div class="auth-field"><label>Tu nombre</label><input type="text" value="${escapeHtml(d.fullName||'')}" oninput="STATE.authDraft.fullName=this.value"></div>
+      <div class="auth-field"><label>Mail</label><input type="email" value="${escapeHtml(d.email||'')}" oninput="STATE.authDraft.email=this.value"></div>
+      <div class="auth-field"><label>Contraseña (mínimo 6 caracteres)</label><input type="password" value="${escapeHtml(d.password||'')}" oninput="STATE.authDraft.password=this.value"></div>
+      <button class="btn-primary" ${busy?'disabled':''} onclick="doSignup()">${busy?'Un momento…':'Crear cuenta'}</button>
+      <div class="auth-switch">¿Ya tenés cuenta? <a onclick="setAuthView('login')">Ingresá</a></div>`;
+  } else if(STATE.authView==='forgot'){
+    body = `
+      <div class="auth-field"><label>Mail de tu cuenta</label><input type="email" value="${escapeHtml(d.email||'')}" oninput="STATE.authDraft.email=this.value"></div>
+      <button class="btn-primary" ${busy?'disabled':''} onclick="doForgot()">${busy?'Un momento…':'Mandar link de recuperación'}</button>
+      <div class="auth-switch"><a onclick="setAuthView('login')">← Volver a ingresar</a></div>`;
+  } else if(STATE.authView==='reset'){
+    body = `
+      <div class="auth-field"><label>Nueva contraseña</label><input type="password" value="${escapeHtml(d.newPassword||'')}" oninput="STATE.authDraft.newPassword=this.value"></div>
+      <button class="btn-primary" ${busy?'disabled':''} onclick="doReset()">${busy?'Un momento…':'Guardar nueva contraseña'}</button>`;
+  }
+  el.innerHTML = `
+    <div class="auth-card">
+      <div class="brand"><span class="stamp">🐾</span> Huellas</div>
+      <div class="auth-subtitle">Tu cuenta, para no perder nunca la agenda de tus mascotas.</div>
+      ${STATE.authMsg ? `<div class="auth-msg ${STATE.authMsg.type}">${escapeHtml(STATE.authMsg.text)}</div>` : ''}
+      ${body}
+    </div>`;
+}
+async function doLogin(){
+  const { email, password } = STATE.authDraft;
+  if(!email || !password){ showAuthMsg('Completá mail y contraseña.', 'error'); return; }
+  STATE.authBusy = true; authRender();
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  STATE.authBusy = false;
+  if(error){ showAuthMsg(traducirAuthError(error.message), 'error'); return; }
+  // onAuthStateChange se encarga de mostrar la app
+}
+async function doSignup(){
+  const { fullName, email, password } = STATE.authDraft;
+  if(!fullName || !email || !password){ showAuthMsg('Completá todos los campos.', 'error'); return; }
+  STATE.authBusy = true; authRender();
+  const { error } = await supabaseClient.auth.signUp({ email, password, options:{ data:{ full_name: fullName } } });
+  STATE.authBusy = false;
+  if(error){ showAuthMsg(traducirAuthError(error.message), 'error'); return; }
+  showAuthMsg('¡Listo! Te mandamos un mail para confirmar tu cuenta. Revisá tu bandeja de entrada.', 'success');
+}
+async function doForgot(){
+  const { email } = STATE.authDraft;
+  if(!email){ showAuthMsg('Poné tu mail.', 'error'); return; }
+  STATE.authBusy = true; authRender();
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: window.location.href });
+  STATE.authBusy = false;
+  if(error){ showAuthMsg(traducirAuthError(error.message), 'error'); return; }
+  showAuthMsg('Si el mail existe, te mandamos un link para elegir una nueva contraseña.', 'success');
+}
+async function doReset(){
+  const { newPassword } = STATE.authDraft;
+  if(!newPassword || newPassword.length<6){ showAuthMsg('La contraseña necesita al menos 6 caracteres.', 'error'); return; }
+  STATE.authBusy = true; authRender();
+  const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+  STATE.authBusy = false;
+  if(error){ showAuthMsg(traducirAuthError(error.message), 'error'); return; }
+  showAuthMsg('Contraseña actualizada. Ya podés seguir usando la app.', 'success');
+}
+async function doLogout(){
+  if(!confirm('¿Cerrar sesión?')) return;
+  await supabaseClient.auth.signOut();
+}
+async function initAuth(){
+  const { data:{ session } } = await supabaseClient.auth.getSession();
+  if(session){ onAuthed(); } else { showAuthShell(); setAuthView('login'); }
+  supabaseClient.auth.onAuthStateChange((event, session)=>{
+    if(event==='SIGNED_IN' && session){ onAuthed(); }
+    if(event==='SIGNED_OUT'){
+      STATE.pets=[]; STATE.petData={}; STATE.currentUser=null;
+      showAuthShell(); setAuthView('login');
+    }
+    if(event==='PASSWORD_RECOVERY'){ showAuthShell(); setAuthView('reset'); }
+  });
+}
+function onAuthed(){
+  showAppShell();
+  loadAll();
 }
 
 /* ============================= DERIVED HELPERS ============================= */
@@ -1162,6 +1395,14 @@ async function compressImageFile(file, maxDim, quality){
 }
 
 /* ============================= HOME VIEW ============================= */
+function accountFooterHtml(){
+  const email = STATE.currentUser ? STATE.currentUser.email : '';
+  return `
+    <div class="account-footer">
+      ${email?`Conectado como ${escapeHtml(email)}<br>`:''}
+      <a onclick="doLogout()">Cerrar sesión</a>
+    </div>`;
+}
 function viewHome(){
   if(STATE.pets.length===0){
     return `
@@ -1176,6 +1417,7 @@ function viewHome(){
         <div><div class="t">Señales de alerta</div><div class="s">Aprendé a notar cuándo vale la pena ir al veterinario</div></div>
         <div style="font-size:20px;">→</div>
       </div>
+      ${accountFooterHtml()}
     `;
   }
   return `
@@ -1189,6 +1431,7 @@ function viewHome(){
       <div><div class="t">Señales de alerta</div><div class="s">Signos que conviene no ignorar</div></div>
       <div style="font-size:20px;">→</div>
     </div>
+    ${accountFooterHtml()}
   `;
 }
 
@@ -2366,8 +2609,11 @@ async function deletePet(petId){
   if(!confirm('¿Eliminar esta ficha y todo su historial? Esta acción no se puede deshacer.')) return;
   STATE.pets = STATE.pets.filter(p=>p.id!==petId);
   delete STATE.petData[petId];
-  await savePets();
-  try{ await window.storage.delete('pet-data:'+petId, false); }catch(e){}
+  try{
+    // pet_data tiene ON DELETE CASCADE por pet_id, así que borrar de "pets" alcanza.
+    const { error } = await supabaseClient.from('pets').delete().eq('id', petId);
+    if(error) console.error('Error eliminando mascota', error);
+  }catch(e){ console.error('Error eliminando mascota', e); }
   goHome();
 }
 
@@ -2702,7 +2948,7 @@ async function saveNoteModal(){
 }
 
 /* ============================= INIT ============================= */
-loadAll();
+initAuth();
 </script>
 </body>
 </html>
