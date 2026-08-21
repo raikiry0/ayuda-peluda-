@@ -79,6 +79,8 @@
   .auth-msg.success{background:rgba(143,184,154,0.25); color:var(--pine-dark);}
   .auth-switch{text-align:center; margin-top:18px; font-size:13px; color:rgba(19,36,32,0.7);}
   .auth-switch a{color:var(--pine); font-weight:700; text-decoration:none; cursor:pointer;}
+  .remember-row{font-size:13px; color:rgba(19,36,32,0.7); margin:-4px 0 16px; display:flex; align-items:center; gap:6px;}
+  .remember-row label{display:flex; align-items:center; gap:7px; cursor:pointer;}
   .account-footer{
     text-align:center; margin-top:24px; padding-top:18px; border-top:1px dashed var(--line);
     font-size:12.5px; color:rgba(19,36,32,0.5);
@@ -631,7 +633,13 @@
 <script>
   const SUPABASE_URL = 'https://bfmepwnmhlckupfjgapb.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmbWVwd25taGxja3VwZmpnYXBiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwODkwNjIsImV4cCI6MjEwMjY2NTA2Mn0.6GhHwHLGEDkR_S0rfP3XBKgqTdFefq43bHmLYEySCmQ';
-  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+      persistSession: true,      // guarda la sesión en localStorage del navegador
+      autoRefreshToken: true,    // renueva el token solo, sin pedir login de nuevo
+      detectSessionInUrl: true   // procesa el link de confirmación de mail / recuperar contraseña
+    }
+  });
 </script>
 <script>
 /* ============================= DATA / STATE ============================= */
@@ -744,7 +752,7 @@ async function loadAll(){
     const { data: pets, error } = await supabaseClient.from('pets').select('*').order('created_at');
     if(error) throw error;
     STATE.pets = (pets||[]).map(dbPetToApp);
-  }catch(e){ console.error('Error cargando mascotas', e); STATE.pets = []; }
+  }catch(e){ notifySaveError('cargar mascotas', e); STATE.pets = []; }
 
   for(const pet of STATE.pets){
     try{
@@ -791,14 +799,19 @@ async function loadAll(){
   checkAlarms();
   setInterval(checkAlarms, 20000);
 }
+function notifySaveError(context, error){
+  console.error(context, error);
+  const msg = (error && (error.message || error.hint || error.details)) || 'Error desconocido';
+  alert('⚠️ No se pudo guardar (' + context + '):\n' + msg + '\n\nRevisá que hayas corrido el SQL en Supabase y que las credenciales sean correctas.');
+}
 async function savePets(){
   const user = await getCurrentUser();
   if(!user || STATE.pets.length===0) return;
   try{
     const rows = STATE.pets.map(p=>appPetToDb(p, user.id));
     const { error } = await supabaseClient.from('pets').upsert(rows, {onConflict:'id'});
-    if(error) console.error('Error guardando mascotas', error);
-  }catch(e){ console.error('Error guardando mascotas', e); }
+    if(error) notifySaveError('mascotas', error);
+  }catch(e){ notifySaveError('mascotas', e); }
 }
 async function savePetData(petId){
   const user = await getCurrentUser();
@@ -807,8 +820,8 @@ async function savePetData(petId){
     const { error } = await supabaseClient.from('pet_data').upsert({
       pet_id: petId, user_id: user.id, data: STATE.petData[petId], updated_at: new Date().toISOString()
     }, {onConflict:'pet_id'});
-    if(error) console.error('Error guardando datos de mascota', error);
-  }catch(e){ console.error('Error guardando datos de mascota', e); }
+    if(error) notifySaveError('datos de la mascota', error);
+  }catch(e){ notifySaveError('datos de la mascota', e); }
 }
 async function saveOwnerContact(name, phone){
   STATE.ownerContact = {name: name||'', phone: phone||''};
@@ -818,8 +831,8 @@ async function saveOwnerContact(name, phone){
     const { error } = await supabaseClient.from('owner_contact').upsert({
       user_id: user.id, name: STATE.ownerContact.name, phone: STATE.ownerContact.phone, updated_at: new Date().toISOString()
     }, {onConflict:'user_id'});
-    if(error) console.error('Error guardando datos de contacto', error);
-  }catch(e){ console.error('Error guardando datos de contacto', e); }
+    if(error) notifySaveError('datos de contacto', error);
+  }catch(e){ notifySaveError('datos de contacto', e); }
 }
 
 /* ============================= AUTENTICACIÓN ============================= */
@@ -858,6 +871,9 @@ function authRender(){
     body = `
       <div class="auth-field"><label>Mail</label><input type="email" value="${escapeHtml(d.email||'')}" oninput="STATE.authDraft.email=this.value"></div>
       <div class="auth-field"><label>Contraseña</label><input type="password" value="${escapeHtml(d.password||'')}" oninput="STATE.authDraft.password=this.value"></div>
+      <div class="remember-row">
+        <label><input type="checkbox" ${d.remember!==false?'checked':''} onchange="STATE.authDraft.remember=this.checked"> Recordar mi mail</label>
+      </div>
       <button class="btn-primary" ${busy?'disabled':''} onclick="doLogin()">${busy?'Un momento…':'Ingresar'}</button>
       <div class="auth-switch">
         <a onclick="setAuthView('forgot')">Olvidé mi contraseña</a><br><br>
@@ -889,12 +905,16 @@ function authRender(){
     </div>`;
 }
 async function doLogin(){
-  const { email, password } = STATE.authDraft;
+  const { email, password, remember } = STATE.authDraft;
   if(!email || !password){ showAuthMsg('Completá mail y contraseña.', 'error'); return; }
   STATE.authBusy = true; authRender();
   const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
   STATE.authBusy = false;
   if(error){ showAuthMsg(traducirAuthError(error.message), 'error'); return; }
+  try{
+    if(remember!==false){ localStorage.setItem('huellas_remembered_email', email); }
+    else{ localStorage.removeItem('huellas_remembered_email'); }
+  }catch(e){}
   // onAuthStateChange se encarga de mostrar la app
 }
 async function doSignup(){
@@ -930,15 +950,21 @@ async function doLogout(){
 }
 async function initAuth(){
   const { data:{ session } } = await supabaseClient.auth.getSession();
-  if(session){ onAuthed(); } else { showAuthShell(); setAuthView('login'); }
+  if(session){ onAuthed(); } else { showAuthShell(); setAuthView('login'); prefillRememberedEmail(); }
   supabaseClient.auth.onAuthStateChange((event, session)=>{
     if(event==='SIGNED_IN' && session){ onAuthed(); }
     if(event==='SIGNED_OUT'){
       STATE.pets=[]; STATE.petData={}; STATE.currentUser=null;
-      showAuthShell(); setAuthView('login');
+      showAuthShell(); setAuthView('login'); prefillRememberedEmail();
     }
     if(event==='PASSWORD_RECOVERY'){ showAuthShell(); setAuthView('reset'); }
   });
+}
+function prefillRememberedEmail(){
+  try{
+    const saved = localStorage.getItem('huellas_remembered_email');
+    if(saved){ STATE.authDraft.email = saved; STATE.authDraft.remember = true; authRender(); }
+  }catch(e){}
 }
 function onAuthed(){
   showAppShell();
