@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Huellas — Agenda de mascotas</title>
+<title>PetID — Agenda de mascotas</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1B3A34">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -63,9 +67,10 @@
     font-family:'Fraunces',serif; font-weight:700; font-size:24px; color:var(--pine-dark);
   }
   .auth-card .brand .stamp{
-    width:34px; height:34px; border-radius:50%; background:var(--butter);
-    display:flex; align-items:center; justify-content:center; font-size:18px; transform:rotate(-8deg);
+    width:38px; height:38px; border-radius:10px; overflow:hidden;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
   }
+  .auth-card .brand .stamp img{width:100%;height:100%;object-fit:cover;}
   .auth-subtitle{font-size:13px; color:rgba(19,36,32,0.6); margin-bottom:24px;}
   .auth-field{margin-bottom:14px;}
   .auth-field label{display:block; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; color:var(--pine); margin-bottom:6px;}
@@ -88,6 +93,29 @@
   .account-footer a{color:var(--coral); font-weight:700; text-decoration:none; cursor:pointer;}
   ::selection{background:var(--butter);color:var(--ink);}
 
+  /* ---------- Selector de idioma ---------- */
+  .lang-gear-wrap{position:relative;margin-left:auto;}
+  .gear-btn{
+    background:none;border:none;font-size:19px;cursor:pointer;padding:6px;
+    line-height:1;flex-shrink:0;
+  }
+  .auth-card .gear-btn{color:var(--pine-dark);}
+  .topbar .gear-btn{color:var(--paper);}
+  .lang-dropdown{
+    position:absolute;top:calc(100% + 6px);right:0;min-width:170px;
+    background:var(--paper);border-radius:14px;border:1px solid var(--line);
+    box-shadow:var(--shadow);overflow:hidden;z-index:60;
+  }
+  .lang-item{
+    padding:12px 16px;font-size:13.5px;font-weight:600;color:var(--pine-dark);
+    cursor:pointer;display:flex;align-items:center;gap:8px;
+    border-bottom:1px solid var(--line);
+  }
+  .lang-item:last-child{border-bottom:none;}
+  .lang-item.active{background:var(--butter);}
+  .lang-item:active{background:var(--paper-dim);}
+  .auth-top-row{display:flex;align-items:flex-start;justify-content:space-between;}
+
   /* ---------- Top bar ---------- */
   .topbar{
     background:var(--pine);
@@ -109,13 +137,10 @@
     gap:8px;
   }
   .brand .stamp{
-    width:30px;height:30px;border-radius:50%;
-    background:var(--butter);
-    display:flex;align-items:center;justify-content:center;
-    font-size:16px;
-    transform:rotate(-8deg);
-    box-shadow:0 2px 0 rgba(0,0,0,0.15) inset;
+    width:32px;height:32px;border-radius:9px;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
   }
+  .brand .stamp img{width:100%;height:100%;object-fit:cover;}
   .tagline{font-size:12.5px;opacity:0.7;margin-top:2px;font-weight:500;}
   .back-btn{
     background:none;border:none;color:var(--paper);
@@ -646,6 +671,167 @@
 const PROMO_LINK = 'https://raikiry0.github.io/ayuda-peluda-/';
 const PROMO_TEXT = '🐾 ¿Querés una agenda para tu mascota? Creá la tuya gratis: ' + PROMO_LINK;
 
+/* ============================= IDIOMAS ============================= */
+const LANGUAGES = [
+  {id:'es', label:'Español', flag:'🇦🇷'},
+  {id:'en', label:'English', flag:'🇺🇸'},
+  {id:'pt', label:'Português', flag:'🇧🇷'},
+];
+const I18N = {
+  es:{
+    tagline:'Tu cuenta, para no perder nunca la agenda de tus mascotas.',
+    loading:'Cargando…',
+    heroTitle1:'Todo sobre tu animal,',
+    heroTitle2:'en un solo lugar.',
+    heroSubtitle:'Medicación, vacunas, peso y notas — para perros, gatos y cualquier compañero que tengas en casa.',
+    whatAnimal:'¿Qué animal tenés?',
+    chooseSpeciesHint:'Elegí una especie para crear su ficha.',
+    chooseSpeciesHint2:'Elegí la especie para empezar su ficha.',
+    yourPets:'Tus mascotas',
+    tapPetHint:'Tocá una ficha para ver su agenda.',
+    addAnotherPet:'＋ Agregar otra mascota',
+    wellnessTitle:'Señales de alerta',
+    wellnessSubtitle:'Aprendé a notar cuándo vale la pena ir al veterinario',
+    wellnessSubtitle2:'Signos que conviene no ignorar',
+    loggedInAs:'Conectado como',
+    logout:'Cerrar sesión',
+    login:'Ingresar',
+    signupBtn:'Crear cuenta',
+    forgotBtn:'Mandar link de recuperación',
+    resetBtn:'Guardar nueva contraseña',
+    mail:'Mail',
+    password:'Contraseña',
+    yourName:'Tu nombre',
+    newPassword:'Nueva contraseña',
+    rememberEmail:'Recordar mi mail',
+    forgotPassword:'Olvidé mi contraseña',
+    noAccount:'¿No tenés cuenta?',
+    signupLink:'Registrate',
+    haveAccount:'¿Ya tenés cuenta?',
+    loginLink:'Ingresá',
+    backToLogin:'← Volver a ingresar',
+    oneMoment:'Un momento…',
+    language:'Idioma',
+    tabPerfil:'Perfil', tabCalendario:'Calendario', tabMedicacion:'Medicación',
+    tabVacunas:'Vacunas', tabConsultas:'Consultas', tabAgua:'Cambio de agua',
+    tabAlimentacion:'Alimentación', tabPeso:'Peso', tabNotas:'Notas',
+    spPerro:'Perro', spGato:'Gato', spAve:'Ave', spConejo:'Conejo', spPez:'Pez',
+    spReptil:'Reptil', spRoedor:'Roedor', spCaballo:'Caballo', spExotico:'Animal exótico', spOtro:'Otro',
+  },
+  en:{
+    tagline:'Your account, so you never lose your pets\' schedule.',
+    loading:'Loading…',
+    heroTitle1:'Everything about your pet,',
+    heroTitle2:'in one place.',
+    heroSubtitle:'Medication, vaccines, weight and notes — for dogs, cats, and any companion you have at home.',
+    whatAnimal:'What animal do you have?',
+    chooseSpeciesHint:'Choose a species to create its profile.',
+    chooseSpeciesHint2:'Choose the species to start the profile.',
+    yourPets:'Your pets',
+    tapPetHint:'Tap a card to see its schedule.',
+    addAnotherPet:'＋ Add another pet',
+    wellnessTitle:'Warning signs',
+    wellnessSubtitle:'Learn when it\'s worth going to the vet',
+    wellnessSubtitle2:'Signs you shouldn\'t ignore',
+    loggedInAs:'Signed in as',
+    logout:'Log out',
+    login:'Log in',
+    signupBtn:'Create account',
+    forgotBtn:'Send recovery link',
+    resetBtn:'Save new password',
+    mail:'Email',
+    password:'Password',
+    yourName:'Your name',
+    newPassword:'New password',
+    rememberEmail:'Remember my email',
+    forgotPassword:'Forgot my password',
+    noAccount:'Don\'t have an account?',
+    signupLink:'Sign up',
+    haveAccount:'Already have an account?',
+    loginLink:'Log in',
+    backToLogin:'← Back to login',
+    oneMoment:'One moment…',
+    language:'Language',
+    tabPerfil:'Profile', tabCalendario:'Calendar', tabMedicacion:'Medication',
+    tabVacunas:'Vaccines', tabConsultas:'Appointments', tabAgua:'Water change',
+    tabAlimentacion:'Feeding', tabPeso:'Weight', tabNotas:'Notes',
+    spPerro:'Dog', spGato:'Cat', spAve:'Bird', spConejo:'Rabbit', spPez:'Fish',
+    spReptil:'Reptile', spRoedor:'Rodent', spCaballo:'Horse', spExotico:'Exotic pet', spOtro:'Other',
+  },
+  pt:{
+    tagline:'Sua conta, para nunca perder a agenda dos seus bichinhos.',
+    loading:'Carregando…',
+    heroTitle1:'Tudo sobre seu bichinho,',
+    heroTitle2:'em um só lugar.',
+    heroSubtitle:'Medicação, vacinas, peso e notas — para cachorros, gatos e qualquer companheiro que você tenha em casa.',
+    whatAnimal:'Qual bichinho você tem?',
+    chooseSpeciesHint:'Escolha uma espécie para criar sua ficha.',
+    chooseSpeciesHint2:'Escolha a espécie para começar a ficha.',
+    yourPets:'Seus bichinhos',
+    tapPetHint:'Toque em uma ficha para ver a agenda.',
+    addAnotherPet:'＋ Adicionar outro bichinho',
+    wellnessTitle:'Sinais de alerta',
+    wellnessSubtitle:'Aprenda a perceber quando vale a pena ir ao veterinário',
+    wellnessSubtitle2:'Sinais que não convém ignorar',
+    loggedInAs:'Conectado como',
+    logout:'Sair da conta',
+    login:'Entrar',
+    signupBtn:'Criar conta',
+    forgotBtn:'Enviar link de recuperação',
+    resetBtn:'Salvar nova senha',
+    mail:'E-mail',
+    password:'Senha',
+    yourName:'Seu nome',
+    newPassword:'Nova senha',
+    rememberEmail:'Lembrar meu e-mail',
+    forgotPassword:'Esqueci minha senha',
+    noAccount:'Não tem conta?',
+    signupLink:'Cadastre-se',
+    haveAccount:'Já tem conta?',
+    loginLink:'Entrar',
+    backToLogin:'← Voltar ao login',
+    oneMoment:'Um momento…',
+    language:'Idioma',
+    tabPerfil:'Perfil', tabCalendario:'Calendário', tabMedicacion:'Medicação',
+    tabVacunas:'Vacinas', tabConsultas:'Consultas', tabAgua:'Troca de água',
+    tabAlimentacion:'Alimentação', tabPeso:'Peso', tabNotas:'Notas',
+    spPerro:'Cachorro', spGato:'Gato', spAve:'Ave', spConejo:'Coelho', spPez:'Peixe',
+    spReptil:'Réptil', spRoedor:'Roedor', spCaballo:'Cavalo', spExotico:'Animal exótico', spOtro:'Outro',
+  }
+};
+function t(key){
+  const lang = STATE.lang || 'es';
+  return (I18N[lang] && I18N[lang][key]) || I18N.es[key] || key;
+}
+function setLang(lang){
+  STATE.lang = lang;
+  STATE.langMenuOpen = false;
+  try{ localStorage.setItem('petid_lang', lang); }catch(e){}
+  render();
+  authRender();
+}
+function toggleLangMenu(evt){
+  if(evt) evt.stopPropagation();
+  STATE.langMenuOpen = !STATE.langMenuOpen;
+  render();
+  authRender();
+}
+function langMenuHtml(){
+  if(!STATE.langMenuOpen) return '';
+  return `
+    <div class="menu-overlay" onclick="STATE.langMenuOpen=false;render();authRender();"></div>
+    <div class="lang-dropdown">
+      ${LANGUAGES.map(l=>`<div class="lang-item ${STATE.lang===l.id?'active':''}" onclick="setLang('${l.id}')">${l.flag} ${l.label}</div>`).join('')}
+    </div>`;
+}
+function langGearBtn(){
+  return `
+    <div class="lang-gear-wrap">
+      <button class="gear-btn" title="${t('language')}" onclick="toggleLangMenu(event)">⚙️</button>
+      ${langMenuHtml()}
+    </div>`;
+}
+
 const SPECIES = [
   {id:'perro', label:'Perro', emojis:['🐶','🐕','🦮','🐩']},
   {id:'gato', label:'Gato', emojis:['🐱','🐈','🐈‍⬛']},
@@ -658,13 +844,20 @@ const SPECIES = [
   {id:'exotico', label:'Animal exótico', emojis:['🦔','🦎','🐸','🦡']},
   {id:'otro', label:'Otro', emojis:['🐾','🐾']},
 ];
-const speciesInfo = id => SPECIES.find(s=>s.id===id) || SPECIES[SPECIES.length-1];
+const SPECIES_I18N_KEY = {perro:'spPerro',gato:'spGato',ave:'spAve',conejo:'spConejo',pez:'spPez',reptil:'spReptil',roedor:'spRoedor',caballo:'spCaballo',exotico:'spExotico',otro:'spOtro'};
+const speciesInfo = id => {
+  const sp = SPECIES.find(s=>s.id===id) || SPECIES[SPECIES.length-1];
+  const key = SPECIES_I18N_KEY[sp.id];
+  return key ? {...sp, label: t(key)} : sp;
+};
 
-const DASHBOARD_TABS = [
-  ['perfil','🪪','Perfil'],['calendario','📅','Calendario'],['medicacion','💊','Medicación'],
-  ['vacunas','💉','Vacunas'],['consultas','🩺','Consultas'],['agua','💧','Cambio de agua'],
-  ['alimentacion','🍽️','Alimentación'],['peso','⚖️','Peso'],['notas','📝','Notas']
-];
+function getDashboardTabs(){
+  return [
+    ['perfil','🪪',t('tabPerfil')],['calendario','📅',t('tabCalendario')],['medicacion','💊',t('tabMedicacion')],
+    ['vacunas','💉',t('tabVacunas')],['consultas','🩺',t('tabConsultas')],['agua','💧',t('tabAgua')],
+    ['alimentacion','🍽️',t('tabAlimentacion')],['peso','⚖️',t('tabPeso')],['notas','📝',t('tabNotas')]
+  ];
+}
 
 const WELLNESS_SIGNS = [
   {t:'Pérdida de apetito', e:'🍽️', d:'Si tu mascota rechaza la comida por más de un día, o come mucho menos de lo habitual, puede ser señal de dolor, problemas dentales o digestivos.'},
@@ -704,6 +897,8 @@ let STATE = {
   authDraft: {},
   authBusy: false,
   authMsg: null,          // {text, type}
+  lang: (function(){ try{ return localStorage.getItem('petid_lang') || 'es'; }catch(e){ return 'es'; } })(),
+  langMenuOpen: false,
 };
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
@@ -869,37 +1064,40 @@ function authRender(){
   let body = '';
   if(STATE.authView==='login'){
     body = `
-      <div class="auth-field"><label>Mail</label><input type="email" value="${escapeHtml(d.email||'')}" oninput="STATE.authDraft.email=this.value"></div>
-      <div class="auth-field"><label>Contraseña</label><input type="password" value="${escapeHtml(d.password||'')}" oninput="STATE.authDraft.password=this.value"></div>
+      <div class="auth-field"><label>${t('mail')}</label><input type="email" value="${escapeHtml(d.email||'')}" oninput="STATE.authDraft.email=this.value"></div>
+      <div class="auth-field"><label>${t('password')}</label><input type="password" value="${escapeHtml(d.password||'')}" oninput="STATE.authDraft.password=this.value"></div>
       <div class="remember-row">
-        <label><input type="checkbox" ${d.remember!==false?'checked':''} onchange="STATE.authDraft.remember=this.checked"> Recordar mi mail</label>
+        <label><input type="checkbox" ${d.remember!==false?'checked':''} onchange="STATE.authDraft.remember=this.checked"> ${t('rememberEmail')}</label>
       </div>
-      <button class="btn-primary" ${busy?'disabled':''} onclick="doLogin()">${busy?'Un momento…':'Ingresar'}</button>
+      <button class="btn-primary" ${busy?'disabled':''} onclick="doLogin()">${busy?t('oneMoment'):t('login')}</button>
       <div class="auth-switch">
-        <a onclick="setAuthView('forgot')">Olvidé mi contraseña</a><br><br>
-        ¿No tenés cuenta? <a onclick="setAuthView('signup')">Registrate</a>
+        <a onclick="setAuthView('forgot')">${t('forgotPassword')}</a><br><br>
+        ${t('noAccount')} <a onclick="setAuthView('signup')">${t('signupLink')}</a>
       </div>`;
   } else if(STATE.authView==='signup'){
     body = `
-      <div class="auth-field"><label>Tu nombre</label><input type="text" value="${escapeHtml(d.fullName||'')}" oninput="STATE.authDraft.fullName=this.value"></div>
-      <div class="auth-field"><label>Mail</label><input type="email" value="${escapeHtml(d.email||'')}" oninput="STATE.authDraft.email=this.value"></div>
-      <div class="auth-field"><label>Contraseña (mínimo 6 caracteres)</label><input type="password" value="${escapeHtml(d.password||'')}" oninput="STATE.authDraft.password=this.value"></div>
-      <button class="btn-primary" ${busy?'disabled':''} onclick="doSignup()">${busy?'Un momento…':'Crear cuenta'}</button>
-      <div class="auth-switch">¿Ya tenés cuenta? <a onclick="setAuthView('login')">Ingresá</a></div>`;
+      <div class="auth-field"><label>${t('yourName')}</label><input type="text" value="${escapeHtml(d.fullName||'')}" oninput="STATE.authDraft.fullName=this.value"></div>
+      <div class="auth-field"><label>${t('mail')}</label><input type="email" value="${escapeHtml(d.email||'')}" oninput="STATE.authDraft.email=this.value"></div>
+      <div class="auth-field"><label>${t('password')} (6+)</label><input type="password" value="${escapeHtml(d.password||'')}" oninput="STATE.authDraft.password=this.value"></div>
+      <button class="btn-primary" ${busy?'disabled':''} onclick="doSignup()">${busy?t('oneMoment'):t('signupBtn')}</button>
+      <div class="auth-switch">${t('haveAccount')} <a onclick="setAuthView('login')">${t('loginLink')}</a></div>`;
   } else if(STATE.authView==='forgot'){
     body = `
-      <div class="auth-field"><label>Mail de tu cuenta</label><input type="email" value="${escapeHtml(d.email||'')}" oninput="STATE.authDraft.email=this.value"></div>
-      <button class="btn-primary" ${busy?'disabled':''} onclick="doForgot()">${busy?'Un momento…':'Mandar link de recuperación'}</button>
-      <div class="auth-switch"><a onclick="setAuthView('login')">← Volver a ingresar</a></div>`;
+      <div class="auth-field"><label>${t('mail')}</label><input type="email" value="${escapeHtml(d.email||'')}" oninput="STATE.authDraft.email=this.value"></div>
+      <button class="btn-primary" ${busy?'disabled':''} onclick="doForgot()">${busy?t('oneMoment'):t('forgotBtn')}</button>
+      <div class="auth-switch"><a onclick="setAuthView('login')">${t('backToLogin')}</a></div>`;
   } else if(STATE.authView==='reset'){
     body = `
-      <div class="auth-field"><label>Nueva contraseña</label><input type="password" value="${escapeHtml(d.newPassword||'')}" oninput="STATE.authDraft.newPassword=this.value"></div>
-      <button class="btn-primary" ${busy?'disabled':''} onclick="doReset()">${busy?'Un momento…':'Guardar nueva contraseña'}</button>`;
+      <div class="auth-field"><label>${t('newPassword')}</label><input type="password" value="${escapeHtml(d.newPassword||'')}" oninput="STATE.authDraft.newPassword=this.value"></div>
+      <button class="btn-primary" ${busy?'disabled':''} onclick="doReset()">${busy?t('oneMoment'):t('resetBtn')}</button>`;
   }
   el.innerHTML = `
     <div class="auth-card">
-      <div class="brand"><span class="stamp">🐾</span> Huellas</div>
-      <div class="auth-subtitle">Tu cuenta, para no perder nunca la agenda de tus mascotas.</div>
+      <div class="auth-top-row">
+        <div class="brand"><span class="stamp"><img src="icons/icon-192.png" alt="PetID"></span> PetID</div>
+        ${langGearBtn()}
+      </div>
+      <div class="auth-subtitle">${t('tagline')}</div>
       ${STATE.authMsg ? `<div class="auth-msg ${STATE.authMsg.type}">${escapeHtml(STATE.authMsg.text)}</div>` : ''}
       ${body}
     </div>`;
@@ -921,7 +1119,11 @@ async function doSignup(){
   const { fullName, email, password } = STATE.authDraft;
   if(!fullName || !email || !password){ showAuthMsg('Completá todos los campos.', 'error'); return; }
   STATE.authBusy = true; authRender();
-  const { error } = await supabaseClient.auth.signUp({ email, password, options:{ data:{ full_name: fullName } } });
+  const redirectUrl = window.location.origin + window.location.pathname;
+  const { error } = await supabaseClient.auth.signUp({
+    email, password,
+    options:{ data:{ full_name: fullName }, emailRedirectTo: redirectUrl }
+  });
   STATE.authBusy = false;
   if(error){ showAuthMsg(traducirAuthError(error.message), 'error'); return; }
   showAuthMsg('¡Listo! Te mandamos un mail para confirmar tu cuenta. Revisá tu bandeja de entrada.', 'success');
@@ -1178,7 +1380,7 @@ async function requestNotificationPermission(){
 function showSystemNotification(pet, kind, entry){
   try{
     if(typeof Notification==='undefined' || Notification.permission!=='granted') return;
-    new Notification('🔔 '+(pet?pet.name:'Huellas'), { body: alarmMessageFor(pet, kind, entry), tag: kind+'-'+entry.id });
+    new Notification('🔔 '+(pet?pet.name:'PetID'), { body: alarmMessageFor(pet, kind, entry), tag: kind+'-'+entry.id });
   }catch(e){}
 }
 function ringAlarm(item){
@@ -1276,7 +1478,10 @@ function renderTopbar(){
   if(STATE.view==='home'){
     el.innerHTML = `
       <div class="topbar">
-        <div class="brand"><span class="stamp">🐾</span> Huellas</div>
+        <div class="topbar-row">
+          <div class="brand"><span class="stamp"><img src="icons/icon-192.png" alt="PetID"></span> PetID</div>
+          ${langGearBtn()}
+        </div>
         <div class="tagline">La libreta de campo de tu mascota</div>
       </div>`;
     return;
@@ -1326,7 +1531,7 @@ function renderTopbar(){
   if(STATE.view==='dashboard'){
     const pet = STATE.pets.find(p=>p.id===STATE.activePetId);
     if(!pet){ el.innerHTML=''; return; }
-    const tabs = DASHBOARD_TABS;
+    const tabs = getDashboardTabs();
     const cur = tabs.find(t=>t[0]===STATE.tab) || tabs[0];
     el.innerHTML = `
       <div class="topbar">
@@ -1425,36 +1630,36 @@ function accountFooterHtml(){
   const email = STATE.currentUser ? STATE.currentUser.email : '';
   return `
     <div class="account-footer">
-      ${email?`Conectado como ${escapeHtml(email)}<br>`:''}
-      <a onclick="doLogout()">Cerrar sesión</a>
+      ${email?`${t('loggedInAs')} ${escapeHtml(email)}<br>`:''}
+      <a onclick="doLogout()">${t('logout')}</a>
     </div>`;
 }
 function viewHome(){
   if(STATE.pets.length===0){
     return `
       <div class="hero">
-        <h1>Todo sobre tu animal,<br>en un solo lugar.</h1>
-        <p>Medicación, vacunas, peso y notas — para perros, gatos y cualquier compañero que tengas en casa.</p>
+        <h1>${t('heroTitle1')}<br>${t('heroTitle2')}</h1>
+        <p>${t('heroSubtitle')}</p>
       </div>
-      <div class="section-title">¿Qué animal tenés?</div>
-      <div class="section-hint">Elegí una especie para crear su ficha.</div>
+      <div class="section-title">${t('whatAnimal')}</div>
+      <div class="section-hint">${t('chooseSpeciesHint')}</div>
       ${speciesGridHtml()}
       <div class="learn-link" onclick="goLearn()">
-        <div><div class="t">Señales de alerta</div><div class="s">Aprendé a notar cuándo vale la pena ir al veterinario</div></div>
+        <div><div class="t">${t('wellnessTitle')}</div><div class="s">${t('wellnessSubtitle')}</div></div>
         <div style="font-size:20px;">→</div>
       </div>
       ${accountFooterHtml()}
     `;
   }
   return `
-    <div class="section-title">Tus mascotas</div>
-    <div class="section-hint">Tocá una ficha para ver su agenda.</div>
+    <div class="section-title">${t('yourPets')}</div>
+    <div class="section-hint">${t('tapPetHint')}</div>
     <div class="pet-grid">
       ${STATE.pets.map(petCardHtml).join('')}
-      <button class="add-pet-card" onclick="goAddSpecies()">＋ Agregar otra mascota</button>
+      <button class="add-pet-card" onclick="goAddSpecies()">${t('addAnotherPet')}</button>
     </div>
     <div class="learn-link" onclick="goLearn()">
-      <div><div class="t">Señales de alerta</div><div class="s">Signos que conviene no ignorar</div></div>
+      <div><div class="t">${t('wellnessTitle')}</div><div class="s">${t('wellnessSubtitle2')}</div></div>
       <div style="font-size:20px;">→</div>
     </div>
     ${accountFooterHtml()}
@@ -1486,7 +1691,7 @@ function speciesGridHtml(){
     ${SPECIES.map(s=>`
       <div class="species-card" onclick="pickSpecies('${s.id}')">
         <div class="emoji">${s.emojis[0]}</div>
-        <div class="label">${s.label}</div>
+        <div class="label">${t(SPECIES_I18N_KEY[s.id]) || s.label}</div>
       </div>`).join('')}
   </div>`;
 }
@@ -1742,7 +1947,7 @@ function buildShareText(pet){
   lines.push('');
   lines.push(`⚖️ Último peso: ${lastWeight ? lastWeight.value+lastWeight.unit+' ('+fmtDate(lastWeight.date)+')' : 'sin registros'}`);
   lines.push('');
-  lines.push('Generado con Huellas 🐾');
+  lines.push('Generado con PetID 🐾');
   lines.push('');
   lines.push(PROMO_TEXT);
   return lines.join('\n');
@@ -2568,7 +2773,7 @@ function tabPerfil(pet){
       <div class="profile-nav-item active" style="cursor:default;">
         <span class="pnav-label">🪪 Perfil</span>
       </div>
-      ${DASHBOARD_TABS.filter(([id])=> id!=='perfil' && !(isAquaticOrExotic && (id==='agua'||id==='alimentacion'))).map(([id,icon,label])=>accordionItemHtml(pet,id,icon,label)).join('')}
+      ${getDashboardTabs().filter(([id])=> id!=='perfil' && !(isAquaticOrExotic && (id==='agua'||id==='alimentacion'))).map(([id,icon,label])=>accordionItemHtml(pet,id,icon,label)).join('')}
     </div>
     ${!isAquaticOrExotic ? `<div class="section-hint" style="margin-top:8px;">💧🍽️ "Cambio de agua" y "Alimentación" están disponibles arriba, dentro de Secciones, por si querés usarlos igual con esta mascota.</div>` : ''}
 
