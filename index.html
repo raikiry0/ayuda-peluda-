@@ -1245,6 +1245,38 @@ function isAlarmDue(alarm){
   return dt <= new Date() && !alarm.sent;
 }
 const KIND_COLLECTION = {med:'meds', consulta:'consultas', agua:'waterChanges', alimentacion:'feeding'};
+const REV_KIND = {meds:'med', consultas:'consulta', waterChanges:'agua', feeding:'alimentacion'};
+
+/* ---------- Puente hacia Kodular (alarma nativa de Android) ----------
+   Si esta página corre adentro de un WebViewer de Kodular, existe el
+   objeto window.AppInventor. Le mandamos un mensaje de texto (JSON) cada
+   vez que se crea, actualiza o cancela una alarma, para que del lado de
+   Kodular se programe/cancele con la extensión Alarm Manager (nativa,
+   suena aunque la app esté cerrada). Si esto corre en un navegador común
+   (no en Kodular), la función simplemente no hace nada — no rompe nada.
+*/
+function kodularBridge(action, payload){
+  try{
+    if(window.AppInventor && typeof window.AppInventor.setWebViewString === 'function'){
+      window.AppInventor.setWebViewString(JSON.stringify(Object.assign({action}, payload)));
+    }
+  }catch(e){ /* no estamos corriendo dentro de Kodular, ignoramos */ }
+}
+function notifyKodularSchedule(pet, kind, entry){
+  const alarm = entry.alarm;
+  if(!alarm || !alarm.enabled || !alarm.date) return;
+  kodularBridge('scheduleAlarm', {
+    id: KIND_COLLECTION[kind] + ':' + entry.id,
+    date: alarm.date,
+    time: alarm.time || '09:00',
+    repeat: alarm.repeat || 'none',
+    title: '🔔 ' + pet.name,
+    message: alarmMessageFor(pet, kind, entry)
+  });
+}
+function notifyKodularCancel(coll, entryId){
+  kodularBridge('cancelAlarm', { id: coll + ':' + entryId });
+}
 function alarmMessageFor(pet, kind, entry){
   if(kind==='med') return `Dale a ${pet.name} su medicación "${entry.name}"${entry.dose?' ('+entry.dose+')':''}.`;
   if(kind==='agua') return `Cambiale el agua a ${pet.name}${entry.notas?' ('+entry.notas+')':''}.`;
@@ -1274,7 +1306,17 @@ function collectDueLocalAlarms(){
 }
 async function markAlarmSent(petId, coll, entryId){
   const entry = STATE.petData[petId][coll].find(x=>x.id===entryId);
-  if(entry && entry.alarm) advanceAlarm(entry.alarm);
+  if(entry && entry.alarm){
+    advanceAlarm(entry.alarm);
+    const pet = STATE.pets.find(p=>p.id===petId);
+    if(pet){
+      if(entry.alarm.enabled && !entry.alarm.sent){
+        notifyKodularSchedule(pet, REV_KIND[coll], entry); // repite: reprogramamos para la próxima fecha
+      }else{
+        notifyKodularCancel(coll, entryId); // no repite más
+      }
+    }
+  }
   await savePetData(petId); render();
 }
 function alarmFieldsHtml(d){
@@ -1697,6 +1739,29 @@ function speciesGridHtml(){
 }
 
 function goHome(){ STATE.view='home'; STATE.activePetId=null; render(); }
+
+/* ---------- Botón "atrás" nativo de Android (llamado desde Kodular) ----------
+   En Kodular, el botón/gesto de atrás por defecto cierra la app entera
+   (porque el WebViewer no tiene "historial" real de páginas). Esta
+   función le da a Kodular un lugar donde preguntar "¿qué tengo que
+   cerrar ahora?" en vez de salir de golpe. Se llama con:
+     WebViewer1.RunJavaScript("closeTopUI();")
+   desde el bloque Screen1.BackPressed.
+   Devuelve true si cerró algo (así Kodular sabe que NO debe salir de
+   la app), o false si no había nada para cerrar (Kodular puede salir).
+*/
+function closeTopUI(){
+  if(STATE.ringingAlarm) return true; // no dejamos cerrar una alarma sonando con el botón atrás
+  if(STATE.modal){ closeModal(); return true; }
+  if(STATE.langMenuOpen){ STATE.langMenuOpen=false; render(); authRender(); return true; }
+  if(STATE.menuOpen){ closeTabMenu(); return true; }
+  if(STATE.view==='poster'){ backFromPoster(); return true; }
+  if(STATE.view==='share'){ backToProfile(); return true; }
+  if(STATE.view==='dashboard'){ goHome(); return true; }
+  if(STATE.view==='addPetForm'){ goAddSpecies(); return true; }
+  if(STATE.view==='addSpecies' || STATE.view==='learn'){ goHome(); return true; }
+  return false; // estamos en el inicio, sin nada abierto — Kodular puede salir de la app
+}
 function goAddSpecies(){ STATE.view='addSpecies'; render(); }
 function goLearn(){ STATE.view='learn'; render(); }
 function goShareSheet(petId, from){ STATE.activePetId=petId; STATE._shareFrom = from || (STATE.view==='dashboard' ? 'profile' : 'home'); STATE.view='share'; render(); }
@@ -1958,6 +2023,14 @@ async function shareWithPhoto(petId){
   const text = buildShareText(pet);
   const hasPhoto = pet.avatarType==='photo' && !!pet.photo;
 
+  // Si esto corre adentro de Kodular, el WebViewer no puede abrir enlaces
+  // whatsapp:// (por eso fallaba con ERR_UNKNOWN_URL_SCHEME). En ese caso
+  // le pedimos a Kodular que comparta con el panel nativo de Android.
+  if(window.AppInventor && typeof window.AppInventor.setWebViewString === 'function'){
+    kodularBridge('shareText', { text: text, title: 'Ficha de '+pet.name });
+    return;
+  }
+
   if(hasPhoto && navigator.share){
     try{
       const res = await fetch(pet.photo);
@@ -2140,12 +2213,22 @@ function downloadPoster(){
 
 async function sharePosterImage(){
   const pet = STATE.pets.find(p=>p.id===STATE.posterDraft.petId);
+  const title = STATE.posterMode==='lost' ? 'Se busca' : 'En adopción';
+
+  // Adentro de Kodular no existe navigator.share — le mandamos la
+  // imagen (como base64) y el título a Kodular para que la comparta
+  // con el panel nativo de Android.
+  if(window.AppInventor && typeof window.AppInventor.setWebViewString === 'function'){
+    kodularBridge('shareImage', { image: STATE.posterImageDataUrl, title: title });
+    return;
+  }
+
   try{
     const res = await fetch(STATE.posterImageDataUrl);
     const blob = await res.blob();
     const file = new File([blob], 'cartel-'+((pet?pet.name:'mascota')||'mascota').replace(/[^a-z0-9]/gi,'_')+'.png', {type:'image/png'});
     if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
-      await navigator.share({files:[file], title: STATE.posterMode==='lost' ? 'Se busca' : 'En adopción'});
+      await navigator.share({files:[file], title});
       return;
     }
   }catch(e){ /* el usuario canceló o el navegador no soporta compartir archivos */ }
@@ -2850,7 +2933,9 @@ async function deletePet(petId){
 
 async function deleteEntry(petId, coll, entryId){
   STATE.petData[petId][coll] = STATE.petData[petId][coll].filter(x=>x.id!==entryId);
-  await savePetData(petId); render();
+  await savePetData(petId);
+  notifyKodularCancel(coll, entryId);
+  render();
 }
 
 /* ============================= PRINT SUMMARY ============================= */
@@ -3034,7 +3119,9 @@ async function saveMedModal(){
   const med = {id:uid(), name:d.name.trim(), dose:d.dose||'', type:d.type, startDate:d.startDate, endDate:d.endDate||'', freqDays:d.freqDays||1, doneDates:[], done:false, alarm: d.alarm||{enabled:false}};
   const pet = STATE.pets.find(p=>p.id===STATE.activePetId);
   STATE.petData[pet.id].meds.push(med);
-  await savePetData(pet.id); closeModal();
+  await savePetData(pet.id);
+  notifyKodularSchedule(pet, 'med', med);
+  closeModal();
 }
 
 function modalVaccineForm(){
@@ -3075,7 +3162,9 @@ async function saveAppointmentModal(){
   const c = {id:uid(), motivo:d.motivo||'', fecha:d.fecha, hora:d.hora||'', notas:d.notas||'', alarm: d.alarm||{enabled:false}};
   const pet = STATE.pets.find(p=>p.id===STATE.activePetId);
   STATE.petData[pet.id].consultas.push(c);
-  await savePetData(pet.id); closeModal();
+  await savePetData(pet.id);
+  notifyKodularSchedule(pet, 'consulta', c);
+  closeModal();
 }
 
 function modalAguaForm(){
@@ -3108,7 +3197,9 @@ async function saveAguaModal(){
   const entry = {id:uid(), notas:d.notas||'', type:d.type, startDate:d.startDate, endDate:d.endDate||'', freqDays:d.freqDays||1, doneDates:[], done:false, alarm: d.alarm||{enabled:false}};
   const pet = STATE.pets.find(p=>p.id===STATE.activePetId);
   STATE.petData[pet.id].waterChanges.push(entry);
-  await savePetData(pet.id); closeModal();
+  await savePetData(pet.id);
+  notifyKodularSchedule(pet, 'agua', entry);
+  closeModal();
 }
 
 function modalAlimentacionForm(){
@@ -3133,7 +3224,9 @@ async function saveAlimentacionModal(){
   const entry = {id:uid(), name:d.name.trim(), cantidad:d.cantidad||'', hora:d.hora||'', type:'interval', startDate:d.startDate, endDate:d.endDate||'', freqDays:d.freqDays||1, doneDates:[], done:false, alarm: d.alarm||{enabled:false}};
   const pet = STATE.pets.find(p=>p.id===STATE.activePetId);
   STATE.petData[pet.id].feeding.push(entry);
-  await savePetData(pet.id); closeModal();
+  await savePetData(pet.id);
+  notifyKodularSchedule(pet, 'alimentacion', entry);
+  closeModal();
 }
 
 function modalWeightForm(){
