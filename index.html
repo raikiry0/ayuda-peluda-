@@ -9,7 +9,7 @@
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
     --ink:#132420;
@@ -2150,11 +2150,11 @@ function viewPosterEdit(){
       </div>
       <div class="field"><label>Señas particulares</label><textarea maxlength="160" placeholder="Ej: collar rojo, mancha en la oreja izquierda…" oninput="STATE.posterDraft.distinguishingMarks=this.value">${escapeHtml(d.distinguishingMarks)}</textarea></div>
     ` : `
-      <div class="field"><label>Temperamento</label><textarea maxlength="160" placeholder="Ej: cariñoso, juguetón, bueno con niños…" oninput="STATE.posterDraft.temperament=this.value">${escapeHtml(d.temperament)}</textarea></div>
-      <div class="field"><label>Requisitos para adoptar</label><textarea maxlength="160" placeholder="Ej: casa con patio, compromiso de esterilización…" oninput="STATE.posterDraft.adoptionRequirements=this.value">${escapeHtml(d.adoptionRequirements)}</textarea></div>
+      <div class="field"><label>Personalidad</label><textarea maxlength="160" placeholder="Ej: Cariñosa, tranquila y muy juguetona" oninput="STATE.posterDraft.temperament=this.value">${escapeHtml(d.temperament)}</textarea></div>
+      <div class="field"><label>Requisitos para adoptar</label><textarea maxlength="220" placeholder="Uno por renglón, ej:&#10;Se entrega a domicilio&#10;Solo casas o deptos con seguridad&#10;Se hace seguimiento" oninput="STATE.posterDraft.adoptionRequirements=this.value">${escapeHtml(d.adoptionRequirements)}</textarea></div>
     `}
 
-    <div class="field"><label>Información adicional (opcional)</label><textarea maxlength="160" placeholder="${isLost?'Ej: se ofrece recompensa…':'Ej: ya está vacunado y esterilizado…'}" oninput="STATE.posterDraft.extraInfo=this.value">${escapeHtml(d.extraInfo)}</textarea></div>
+    <div class="field"><label>${isLost?'Información adicional (opcional)':'Su historia (opcional)'}</label><textarea maxlength="160" placeholder="${isLost?'Ej: se ofrece recompensa…':'Ej: Fue abandonada en el parque San Martín cuando era más pequeña…'}" oninput="STATE.posterDraft.extraInfo=this.value">${escapeHtml(d.extraInfo)}</textarea></div>
 
     <div class="field"><label>Tu nombre</label><input type="text" value="${escapeHtml(d.ownerName)}" oninput="STATE.posterDraft.ownerName=this.value"></div>
     <div class="field"><label>Tu número de contacto</label><input type="text" placeholder="Ej: 291 400-1234" value="${escapeHtml(d.ownerPhone)}" oninput="STATE.posterDraft.ownerPhone=this.value"></div>
@@ -2176,7 +2176,9 @@ async function generatePoster(){
   }
   await saveOwnerContact(d.ownerName.trim(), d.ownerPhone.trim());
   try{
-    const dataUrl = await renderPosterCanvas(d, STATE.posterMode);
+    const dataUrl = STATE.posterMode==='adoption'
+      ? await renderAdoptionPosterCanvas(d, STATE.pets.find(p=>p.id===d.petId))
+      : await renderPosterCanvas(d, STATE.posterMode);
     STATE.posterImageDataUrl = dataUrl;
     STATE.posterStage = 'preview';
     render();
@@ -2280,6 +2282,253 @@ function wrapTextLines(ctx, text, maxWidth, maxLines){
     }
   }
   return lines;
+}
+
+/* ---- Cartel de adopción, estilo "flyer" decorativo ---- */
+async function ensurePosterFontsLoaded(){
+  try{
+    await Promise.all([
+      document.fonts.load("800 120px 'Baloo 2'"),
+      document.fonts.load("700 34px 'Baloo 2'"),
+      document.fonts.load("600 30px 'Nunito'"),
+      document.fonts.load("700 30px 'Nunito'"),
+      document.fonts.load("800 30px 'Nunito'"),
+      document.fonts.load("400 26px 'Nunito'"),
+    ]);
+  }catch(e){}
+}
+function drawRibbon(ctx, cx, cy, w, h, angleDeg, fill, text, textColor, font){
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(angleDeg * Math.PI/180);
+  ctx.fillStyle = fill;
+  drawRoundedRect(ctx, -w/2, -h/2, w, h, h/2);
+  ctx.fill();
+  ctx.fillStyle = textColor;
+  ctx.font = font;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 0, h*0.06);
+  ctx.restore();
+  ctx.textBaseline = 'alphabetic';
+}
+function drawIconCircle(ctx, cx, cy, r, bg, emoji, emojiSize){
+  ctx.save();
+  ctx.fillStyle = bg;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI*2);
+  ctx.fill();
+  ctx.font = emojiSize+"px 'Nunito', sans-serif";
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(emoji, cx, cy+emojiSize*0.06);
+  ctx.restore();
+  ctx.textBaseline = 'alphabetic';
+}
+
+async function renderAdoptionPosterCanvas(d, pet){
+  await ensurePosterFontsLoaded();
+  const W = 1080, H = 2400;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  const cream = '#FBF0DE';
+  const ink = '#2B2118';
+  const sage = '#7C9070';
+  const sageDark = '#5F7256';
+  const terracotta = '#D98871';
+  const pink = '#E8A0A0';
+  const cardBg = '#FFFFFF';
+
+  ctx.fillStyle = cream;
+  ctx.fillRect(0,0,W,H);
+
+  // corazones decorativos sueltos en las esquinas superiores
+  ctx.font = "44px 'Nunito', sans-serif";
+  ctx.fillStyle = terracotta;
+  ctx.textAlign = 'left';
+  ctx.fillText('♡', 60, 110);
+  ctx.textAlign = 'right';
+  ctx.fillText('♡', W-60, 130);
+  ctx.textAlign = 'left';
+
+  let cursorY = 90;
+
+  // --- Título con el nombre, estilo cartel a mano ---
+  ctx.textAlign = 'center';
+  ctx.fillStyle = ink;
+  let titleSize = 130;
+  ctx.font = `800 ${titleSize}px 'Baloo 2', sans-serif`;
+  let titleWidth = ctx.measureText((d.name||'Mi mascota').toUpperCase()).width;
+  while(titleWidth > W*0.86 && titleSize > 60){
+    titleSize -= 6;
+    ctx.font = `800 ${titleSize}px 'Baloo 2', sans-serif`;
+    titleWidth = ctx.measureText((d.name||'Mi mascota').toUpperCase()).width;
+  }
+  ctx.fillText((d.name||'Mi mascota').toUpperCase(), W/2, cursorY + titleSize*0.78);
+
+  // acentos tipo "spark" a los costados del título
+  function drawSpark(x, y, size, rot){
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(rot*Math.PI/180);
+    ctx.strokeStyle = terracotta;
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-size,0); ctx.lineTo(size,0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,-size*0.6); ctx.lineTo(0,size*0.6); ctx.stroke();
+    ctx.restore();
+  }
+  drawSpark(W*0.12, cursorY+titleSize*0.42, 22, -18);
+  drawSpark(W*0.88, cursorY+titleSize*0.42, 22, 18);
+
+  cursorY += titleSize*0.95;
+
+  // --- Cinta "¡Buscá un hogar!" ---
+  drawRibbon(ctx, W/2, cursorY+40, 560, 84, -2, sage, '¡Buscá un hogar! ♡', '#FFFFFF', "700 40px 'Baloo 2', sans-serif");
+  cursorY += 110;
+
+  // --- Foto principal ---
+  const photos = (d.selectedPhotos||[]).slice(0,2);
+  const mainSize = 760;
+  const mainX = W/2 - mainSize/2;
+  const photoTop = cursorY + 20;
+  if(photos[0]){
+    try{
+      const img = await loadImageEl(photos[0]);
+      ctx.save();
+      drawRoundedRect(ctx, mainX, photoTop, mainSize, mainSize, 46);
+      ctx.clip();
+      drawCoverImage(ctx, img, mainX, photoTop, mainSize, mainSize);
+      ctx.restore();
+      ctx.lineWidth = 10; ctx.strokeStyle = '#FFFFFF';
+      drawRoundedRect(ctx, mainX, photoTop, mainSize, mainSize, 46);
+      ctx.stroke();
+    }catch(e){}
+  } else {
+    ctx.fillStyle = '#EFE6D0';
+    drawRoundedRect(ctx, mainX, photoTop, mainSize, mainSize, 46);
+    ctx.fill();
+    ctx.font = "140px sans-serif"; ctx.fillStyle = sage; ctx.textAlign='center';
+    ctx.fillText('🐾', W/2, photoTop+mainSize/2+50);
+  }
+
+  // foto secundaria circular, superpuesta
+  if(photos[1]){
+    const smallR = 130;
+    const scx = mainX + mainSize - 40;
+    const scy = photoTop + mainSize - 30;
+    try{
+      const img2 = await loadImageEl(photos[1]);
+      ctx.save();
+      ctx.beginPath(); ctx.arc(scx, scy, smallR, 0, Math.PI*2); ctx.closePath(); ctx.clip();
+      drawCoverImage(ctx, img2, scx-smallR, scy-smallR, smallR*2, smallR*2);
+      ctx.restore();
+      ctx.lineWidth = 8; ctx.strokeStyle = '#FFFFFF';
+      ctx.beginPath(); ctx.arc(scx, scy, smallR, 0, Math.PI*2); ctx.stroke();
+    }catch(e){}
+  }
+
+  cursorY = photoTop + mainSize + 70;
+
+  // --- Cinta "Dale una oportunidad" (decorativa, apoyada sobre la foto) ---
+  drawRibbon(ctx, W*0.24, photoTop + mainSize*0.18, 330, 74, -5, terracotta, 'Dale una', '#FFFFFF', "700 30px 'Baloo 2', sans-serif");
+
+  const padX = 80, maxTextW = W - padX*2;
+
+  // --- Caja de historia (si cargaron info adicional) ---
+  if(d.extraInfo){
+    const boxPad = 34;
+    ctx.font = "600 30px 'Nunito', sans-serif";
+    const lines = wrapTextLines(ctx, d.extraInfo, maxTextW - boxPad*2 - 70, 4);
+    const boxH = 60 + lines.length*40;
+    ctx.fillStyle = cardBg;
+    drawRoundedRect(ctx, padX, cursorY, maxTextW, boxH, 28);
+    ctx.fill();
+    ctx.font = "60px sans-serif"; ctx.textAlign='left'; ctx.fillStyle = pink;
+    ctx.fillText('🐾', padX+22, cursorY+boxH/2+20);
+    ctx.fillStyle = ink;
+    ctx.font = "600 30px 'Nunito', sans-serif";
+    lines.forEach((l,i)=> ctx.fillText(l, padX+100, cursorY+50+i*40));
+    cursorY += boxH + 40;
+  }
+
+  // --- Lista de características (ícono + texto) ---
+  function traitRow(emoji, bg, text){
+    if(!text) return;
+    const rowH = 96;
+    drawIconCircle(ctx, padX+42, cursorY+rowH/2, 42, bg, emoji, 40);
+    ctx.fillStyle = ink;
+    ctx.font = "700 34px 'Nunito', sans-serif";
+    ctx.textAlign = 'left';
+    const lines = wrapTextLines(ctx, text, maxTextW-140, 2);
+    const lineH = 40;
+    const startY = cursorY + rowH/2 - ((lines.length-1)*lineH)/2 + 12;
+    lines.forEach((l,i)=> ctx.fillText(l, padX+110, startY+i*lineH));
+    cursorY += rowH;
+  }
+  const sexLabel = {macho:'Macho', hembra:'Hembra', nose:''}[pet.sex] || '';
+  const neuterLabel = pet.neutered==='si' ? (pet.sex==='hembra'?'Castrada':'Castrado') : (pet.neutered==='no' ? 'No castrado/a' : '');
+
+  traitRow('❤️', '#F4CFC7', d.temperament);
+  if(neuterLabel) traitRow('♀', '#EAD9C2', neuterLabel);
+  traitRow('🐱', '#F2C9C0', 'Tiene ' + petAge(pet));
+  if(sexLabel) traitRow('🐾', '#CFE0C7', sexLabel);
+
+  cursorY += 20;
+
+  // --- Requisitos ---
+  if(d.adoptionRequirements){
+    drawRibbon(ctx, W/2, cursorY+38, 340, 76, 0, sage, 'REQUISITOS', '#FFFFFF', "700 32px 'Baloo 2', sans-serif");
+    cursorY += 90;
+    const reqLines = d.adoptionRequirements.split('\n').map(s=>s.trim()).filter(Boolean);
+    const boxTop = cursorY;
+    ctx.strokeStyle = sage; ctx.lineWidth = 3;
+    ctx.setLineDash([10,8]);
+    let estH = 60;
+    ctx.font = "600 28px 'Nunito', sans-serif";
+    const wrapped = reqLines.map(l=>wrapTextLines(ctx, l, maxTextW-140, 3));
+    wrapped.forEach(ls=> estH += ls.length*36 + 30);
+    drawRoundedRect(ctx, padX, boxTop, maxTextW, estH, 26);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    let ry = boxTop + 46;
+    wrapped.forEach(ls=>{
+      drawIconCircle(ctx, padX+56, ry-10, 30, terracotta, '✓', 28);
+      ctx.fillStyle = ink; ctx.font = "600 28px 'Nunito', sans-serif"; ctx.textAlign='left';
+      ls.forEach((l,i)=> ctx.fillText(l, padX+110, ry+i*36));
+      ry += ls.length*36 + 30;
+    });
+    cursorY = boxTop + estH + 40;
+  }
+
+  // --- Barra de contacto (estilo WhatsApp) ---
+  cursorY += 10;
+  const barH = 130;
+  ctx.fillStyle = sageDark;
+  drawRoundedRect(ctx, padX, cursorY, maxTextW, barH, 24);
+  ctx.fill();
+  ctx.font = "56px 'Nunito', sans-serif"; ctx.fillStyle = '#25D366'; ctx.textAlign='left';
+  ctx.fillText('💬', padX+30, cursorY+barH/2+20);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = "800 44px 'Nunito', sans-serif";
+  ctx.fillText('Tel: ' + (d.ownerPhone||''), padX+110, cursorY+barH/2+16);
+  ctx.font = "48px sans-serif"; ctx.textAlign='right'; ctx.fillStyle='#F4CFC7';
+  ctx.fillText('🐾', padX+maxTextW-30, cursorY+barH/2+16);
+  ctx.textAlign='left';
+
+  const footerY = cursorY + barH + 50;
+  ctx.fillStyle = '#9C8F78';
+  ctx.font = "20px 'Nunito', sans-serif";
+  ctx.textAlign = 'center';
+  ctx.fillText(PROMO_TEXT, W/2, footerY);
+
+  const finalHeight = Math.min(H, footerY + 24);
+  const trimmed = document.createElement('canvas');
+  trimmed.width = W; trimmed.height = finalHeight;
+  trimmed.getContext('2d').drawImage(canvas, 0, 0, W, finalHeight, 0, 0, W, finalHeight);
+  return trimmed.toDataURL('image/png');
 }
 
 async function renderPosterCanvas(d, mode){
